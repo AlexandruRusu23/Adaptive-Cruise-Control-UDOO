@@ -1,6 +1,6 @@
-# Automatic Cruise Control #
-## Linux Embedded Challeng project ##
-## Team Name: RS Lang ##
+# Adaptive Cruise Control #
+## Linux Embedded Challenge project ##
+### Team Name: RS Lang ###
 ### Team Members: ###
 - Alexandru Rusu
 - Alexandru Stahie
