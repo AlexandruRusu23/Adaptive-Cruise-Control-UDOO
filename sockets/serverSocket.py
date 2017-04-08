@@ -1,5 +1,8 @@
 import socket
 import sys
+import SerialManager
+
+serial_manager = SerialManager.SerialManager('/dev/ttyACM0', 9600)
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 # Bind the socket to the port
@@ -22,6 +25,10 @@ while True:
             data = connection.recv(1024)
             if data:
                 print >>sys.stderr, 'Client: "%s"' % data
+                commands = []
+                commands.append(data)
+                serial_manager.set_scanner_commands(commands)
+                serial_manager.execute_commands()
             else:
                 print >>sys.stderr, 'no more data from', client_address
                 break
