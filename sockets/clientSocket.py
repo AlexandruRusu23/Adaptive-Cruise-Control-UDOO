@@ -18,11 +18,6 @@ try:
 	    	 break
 	    print >>sys.stderr, 'sending "%s"' % message
 	    sock.sendall(message)
-
-	    data = sock.recv(1024)
-	    
-	    print >>sys.stderr, 'received "%s"' % data
-
 finally:
     print >>sys.stderr, 'closing socket'
     sock.close()
