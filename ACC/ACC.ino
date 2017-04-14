@@ -53,7 +53,11 @@ void loop()
     rightFrontMotor->run(FORWARD);
   else
     rightFrontMotor->run(BACKWARD);
+<<<<<<< HEAD
   delay(100);
+=======
+  delay(50);
+>>>>>>> dcc57cef82967c4616a517bdd0504c126111afc1
 }
 
 long getSerial()
@@ -65,7 +69,7 @@ long getSerial()
     if(inByte > 0 && inByte != '/')
     {
       serialData = serialData * 10 + inByte - '0';
-      Serial.println(serialData);
+      //Serial.println(serialData);
     }
   }
 
@@ -80,28 +84,24 @@ void CommandManager()
   {
     case 1: // speed up
     {
-      Serial.print("Speed increased to: ");
       for(int i = 0; i<4; i++)
       {
-        if(motorSpeedValue[i] < 70)
-          motorSpeedValue[i] = 70;
+        if(motorSpeedValue[i] < 100)
+          motorSpeedValue[i] = 100;
         else if (motorSpeedValue[i] < 250)
-          motorSpeedValue[i] += 20;
+          motorSpeedValue[i] += 10;
       }
-      Serial.println(motorSpeedValue[0]);
       break;
     }
     case 2: // speed down
     {
-      Serial.print("Speed decreased to: ");
       for(int i = 0; i<4; i++)
       {
-        if (motorSpeedValue[i] > 70)
-          motorSpeedValue[i] -= 20;
+        if (motorSpeedValue[i] > 100)
+          motorSpeedValue[i] -= 10;
         else
           motorSpeedValue[i] = 0;
       }
-      Serial.println(motorSpeedValue[0]);
       break;
     }
     case 3: // brake
@@ -110,7 +110,6 @@ void CommandManager()
       {
         GoBackWard[i] = false;
       }
-      Serial.println("Brake activated!");
       for(int i = 0; i<4; i++)
       {
         motorSpeedValue[i] = 0;
@@ -119,7 +118,6 @@ void CommandManager()
     }
     case 4: // turn right
     {
-      Serial.println("Go To Right!");
       for(int i = 0; i<4; i++)
       {
         if(motorSpeedValue[i] < 70)
@@ -128,20 +126,19 @@ void CommandManager()
       
       if (motorSpeedValue[LEFT_BACK_MOTOR] > 70)
       {
-        motorSpeedValue[LEFT_BACK_MOTOR] -= 20;
+        motorSpeedValue[LEFT_BACK_MOTOR] -= 10;
         motorSpeedValue[LEFT_FRONT_MOTOR] = motorSpeedValue[LEFT_BACK_MOTOR];
       }
 
       if (motorSpeedValue[RIGHT_FRONT_MOTOR] < 250)
       {
-        motorSpeedValue[RIGHT_FRONT_MOTOR] += 20;
+        motorSpeedValue[RIGHT_FRONT_MOTOR] += 10;
         motorSpeedValue[RIGHT_BACK_MOTOR] = motorSpeedValue[RIGHT_FRONT_MOTOR];
       }
       break;
     }
     case 5: // turn left
     {
-      Serial.println("Go To Left!");
       for(int i = 0; i<4; i++)
       {
         if(motorSpeedValue[i] < 70)
@@ -150,13 +147,13 @@ void CommandManager()
      
       if (motorSpeedValue[LEFT_BACK_MOTOR] < 250)
       {
-        motorSpeedValue[LEFT_BACK_MOTOR] += 20;
+        motorSpeedValue[LEFT_BACK_MOTOR] += 10;
         motorSpeedValue[LEFT_FRONT_MOTOR] = motorSpeedValue[LEFT_BACK_MOTOR];
       }
 
       if (motorSpeedValue[RIGHT_FRONT_MOTOR] > 70)
       {
-        motorSpeedValue[RIGHT_FRONT_MOTOR] -= 20;
+        motorSpeedValue[RIGHT_FRONT_MOTOR] -= 10;
         motorSpeedValue[RIGHT_BACK_MOTOR] = motorSpeedValue[RIGHT_FRONT_MOTOR];
       }
       break;
@@ -165,10 +162,11 @@ void CommandManager()
     {
       for(int i = 0; i<4; i++)
       {
-        if(motorSpeedValue[i] < 70)
-          motorSpeedValue[i] = 70;
+        if(motorSpeedValue[i] < 100)
+          motorSpeedValue[i] = 100;
         GoBackWard[i] = true;
       }
     }
   }
+  Serial.flush();
 }
