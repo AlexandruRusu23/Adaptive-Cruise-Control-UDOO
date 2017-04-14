@@ -53,11 +53,7 @@ void loop()
     rightFrontMotor->run(FORWARD);
   else
     rightFrontMotor->run(BACKWARD);
-<<<<<<< HEAD
-  delay(100);
-=======
   delay(50);
->>>>>>> dcc57cef82967c4616a517bdd0504c126111afc1
 }
 
 long getSerial()
