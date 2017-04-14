@@ -80,7 +80,6 @@ void CommandManager()
   {
     case 1: // speed up
     {
-      //Serial.print("Speed increased to: ");
       for(int i = 0; i<4; i++)
       {
         if(motorSpeedValue[i] < 100)
@@ -88,12 +87,10 @@ void CommandManager()
         else if (motorSpeedValue[i] < 250)
           motorSpeedValue[i] += 10;
       }
-      //Serial.println(motorSpeedValue[0]);
       break;
     }
     case 2: // speed down
     {
-      //Serial.print("Speed decreased to: ");
       for(int i = 0; i<4; i++)
       {
         if (motorSpeedValue[i] > 100)
@@ -101,7 +98,6 @@ void CommandManager()
         else
           motorSpeedValue[i] = 0;
       }
-      //Serial.println(motorSpeedValue[0]);
       break;
     }
     case 3: // brake
@@ -110,7 +106,6 @@ void CommandManager()
       {
         GoBackWard[i] = false;
       }
-      //Serial.println("Brake activated!");
       for(int i = 0; i<4; i++)
       {
         motorSpeedValue[i] = 0;
@@ -119,11 +114,10 @@ void CommandManager()
     }
     case 4: // turn right
     {
-      //Serial.println("Go To Right!");
       for(int i = 0; i<4; i++)
       {
         if(motorSpeedValue[i] < 70)
-          motorSpeedValue[i] = 0;
+          motorSpeedValue[i] = 70;
       }
       
       if (motorSpeedValue[LEFT_BACK_MOTOR] > 70)
@@ -141,11 +135,10 @@ void CommandManager()
     }
     case 5: // turn left
     {
-      //Serial.println("Go To Left!");
       for(int i = 0; i<4; i++)
       {
         if(motorSpeedValue[i] < 70)
-          motorSpeedValue[i] = 0;
+          motorSpeedValue[i] = 70;
       }
      
       if (motorSpeedValue[LEFT_BACK_MOTOR] < 250)
