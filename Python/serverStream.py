@@ -2,8 +2,21 @@ import socket
 import sys
 import cv2
 import pickle
-import numpy as np
+import numpy
 import struct ## new
+
+def recvall(sock, count):
+    """
+    receive blocks of count size
+    """
+    buf = b''
+    while count:
+        newbuf = sock.recv(count)
+        if not newbuf:
+            return None
+        buf += newbuf
+        count -= len(newbuf)
+    return buf
 
 HOST='192.168.0.104'
 PORT=8089
@@ -18,24 +31,17 @@ print 'Socket now listening'
 
 conn,addr=s.accept()
 
-### new
-data = ""
-payload_size = struct.calcsize("L") 
 while True:
-    while len(data) < payload_size:
-        data += conn.recv(4096)
-    packed_msg_size = data[:payload_size]
-    data = data[payload_size:]
-    msg_size = struct.unpack("L", packed_msg_size)[0]
-    while len(data) < msg_size:
-        data += conn.recv(4096)
-    frame_data = data[:msg_size]
-    data = data[msg_size:]
 
-    frame=pickle.loads(frame_data)
-    frame=cv2.imdecode(frame, 1)
+    length = recvall(conn, 4096)
+    stringData = recvall(conn, int(length))
+    data = numpy.fromstring(stringData, dtype='uint8')
+
+    frame=cv2.imdecode(data, 1)
     frame=cv2.flip(frame,1)
     cv2.imshow('frame', frame)
     k = cv2.waitKey(33)
     if k==27:    # Esc key to stop
         break
+
+conn.close()

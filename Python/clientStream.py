@@ -1,5 +1,5 @@
 import cv2
-import numpy as np
+import numpy
 import socket
 import sys
 import pickle
@@ -11,5 +11,10 @@ while True:
 	ret,frame=cap.read()
 	encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 60]
 	result, encimg = cv2.imencode('.jpg', frame, encode_param)
-	data = pickle.dumps(frame) ### new code
-	clientsocket.sendall(struct.pack("L", len(data))+data) ### new code
+	data = numpy.array(encimg)
+	stringData = data.tostring()
+
+	clientsocket.send(str(len(stringData)).ljust(4096))
+	clientsocket.send(stringData)
+
+clientsocket.close()
