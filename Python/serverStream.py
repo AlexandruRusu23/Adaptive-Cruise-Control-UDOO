@@ -31,11 +31,10 @@ while True:
         data += conn.recv(4096)
     frame_data = data[:msg_size]
     data = data[msg_size:]
-    ###
 
     frame=pickle.loads(frame_data)
-    #print frame
-    frame = cv2.flip(frame,1)
+    frame=cv2.imdecode(frame, 1)
+    frame=cv2.flip(frame,1)
     cv2.imshow('frame', frame)
     k = cv2.waitKey(33)
     if k==27:    # Esc key to stop
