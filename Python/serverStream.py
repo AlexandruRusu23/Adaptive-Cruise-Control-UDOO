@@ -1,47 +1,43 @@
 import socket
 import sys
+import time
 import cv2
-import pickle
 import numpy
-import struct ## new
-
-def recvall(sock, count):
-    """
-    receive blocks of count size
-    """
-    buf = b''
-    while count:
-        newbuf = sock.recv(count)
-        if not newbuf:
-            return None
-        buf += newbuf
-        count -= len(newbuf)
-    return buf
-
 HOST='192.168.0.104'
-PORT=8089
+PORT=8088
 
-s=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+sock=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 print 'Socket created'
 
-s.bind((HOST,PORT))
+sock.bind((HOST,PORT))
 print 'Socket bind complete'
-s.listen(10)
+sock.listen(1)
 print 'Socket now listening'
-
-conn,addr=s.accept()
 
 while True:
 
-    length = recvall(conn, 4096)
-    stringData = recvall(conn, int(length))
-    data = numpy.fromstring(stringData, dtype='uint8')
+    print >>sys.stderr, 'waiting for a connection'
+    conn,addr=sock.accept()
 
-    frame=cv2.imdecode(data, 1)
-    frame=cv2.flip(frame,1)
-    cv2.imshow('frame', frame)
-    k = cv2.waitKey(33)
-    if k==27:    # Esc key to stop
-        break
+    try:
+        print >>sys.stderr, 'connection from', addr
+        cap=cv2.VideoCapture(0)
 
-conn.close()
+        current_time = time.time()
+
+        while True:
+            ret,frame=cap.read()
+            encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 60]
+            result, encimg = cv2.imencode('.jpg', frame, encode_param)
+            data = numpy.array(encimg)
+            stringData = data.tostring()
+
+            if time.time() - current_time > 10:
+                break
+
+            conn.send(str(len(stringData)).ljust(4096))
+            conn.send(stringData)
+
+    finally:
+        conn.close()
+        cap.release()

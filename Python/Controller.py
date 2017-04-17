@@ -29,7 +29,7 @@ class Controller(object):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         # Connect the socket to the port where the server is listening
-        self.server_address = ('192.168.0.104', 33306)
+        self.server_address = ('192.168.0.107', 32654)
 
     def connect(self):
         print >>sys.stderr, 'connecting to %s port %s' % self.server_address
