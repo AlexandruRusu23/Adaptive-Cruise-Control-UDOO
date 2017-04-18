@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>660</width>
+    <height>699</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Adaptive Cruise Control - RS Lang</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QGridLayout" name="gridLayout">
+    <item row="1" column="0" rowspan="3">
+     <layout class="QVBoxLayout" name="distance_buttons_layout">
+      <item>
+       <widget class="QPushButton" name="increase_distance_button">
+        <property name="text">
+         <string>Increase Distance</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="decrease_distance_button">
+        <property name="text">
+         <string>Decrease Distance</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item row="0" column="0" colspan="6">
+     <layout class="QVBoxLayout" name="streamer_image_layout">
+      <item>
+       <widget class="QGraphicsView" name="streamer_image_view">
+        <property name="minimumSize">
+         <size>
+          <width>640</width>
+          <height>480</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item row="1" column="5" rowspan="3">
+     <layout class="QVBoxLayout" name="speed_buttons_layout">
+      <item>
+       <widget class="QPushButton" name="speed_up_button">
+        <property name="text">
+         <string>Speed Up</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="speed_down_button">
+        <property name="text">
+         <string>Speed Down</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="brake_button">
+        <property name="text">
+         <string>Brake</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item row="1" column="1" rowspan="3" colspan="4">
+     <layout class="QFormLayout" name="states_layout">
+      <item row="0" column="0">
+       <widget class="QLabel" name="speed_label">
+        <property name="text">
+         <string>Speed</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QLineEdit" name="speed_text">
+        <property name="readOnly">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="preferred_speed_label">
+        <property name="text">
+         <string>Preferred Speed</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QLineEdit" name="preferred_speed_text">
+        <property name="readOnly">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="cruise_distance_label">
+        <property name="text">
+         <string>Cruise Distance</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QLineEdit" name="cruise_distance_text">
+        <property name="readOnly">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="detection_label">
+        <property name="text">
+         <string>Detection</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <widget class="QLineEdit" name="detection_text">
+        <property name="readOnly">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="0">
+       <widget class="QLabel" name="command_label">
+        <property name="text">
+         <string>Command</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="1">
+       <widget class="QLineEdit" name="command_text">
+        <property name="readOnly">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+ </widget>
+ <tabstops>
+  <tabstop>streamer_image_view</tabstop>
+ </tabstops>
+ <resources/>
+ <connections/>
+</ui>
