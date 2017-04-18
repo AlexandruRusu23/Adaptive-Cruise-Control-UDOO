@@ -3,6 +3,8 @@ Main for Remote App
 """
 import sys
 from PyQt4 import QtCore, QtGui
+import ControllerClient
+import StreamerClient
 
 try:
     #we want to use the same name form
@@ -33,6 +35,9 @@ class RemoteMain(object):
         All components needed for UI
         * declare first in __init__ as None
         """
+        self.__controller = ControllerClient.ControllerClient()
+        self.__streamer = StreamerClient.StreamerClient()
+
         self.centralwidget = None
         self.grid_layout = None
         self.distance_buttons_layout = None
@@ -63,6 +68,7 @@ class RemoteMain(object):
         """
         main_window.setObjectName(FROM_UTF8("main_window"))
         main_window.resize(660, 700)
+        main_window.keyPressEvent = self.key_press_event
         self.centralwidget = QtGui.QWidget(main_window)
         self.centralwidget.setObjectName(FROM_UTF8("centralwidget"))
         self.grid_layout = QtGui.QGridLayout(self.centralwidget)
@@ -157,6 +163,11 @@ class RemoteMain(object):
         self.cruise_distance_label.setText(_translate("main_window", "Cruise Distance", None))
         self.detection_label.setText(_translate("main_window", "Detection", None))
         self.command_label.setText(_translate("main_window", "Command", None))
+
+    def start(self):
+        """
+        start
+        """
 
 if __name__ == "__main__":
     MAIN_APP = QtGui.QApplication(sys.argv)
