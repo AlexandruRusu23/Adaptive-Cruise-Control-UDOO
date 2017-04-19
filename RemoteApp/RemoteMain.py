@@ -144,6 +144,10 @@ class RemoteMain(object):
         self.statusbar.setObjectName(FROM_UTF8("statusbar"))
         main_window.setStatusBar(self.statusbar)
 
+        self.speed_up_button.clicked.connect(self.__speed_up_button_clicked)
+        self.speed_down_button.clicked.connect(self.__speed_down_button_clicked)
+        self.brake_button.clicked.connect(self.__brake_button_clicked)
+
         self.retranslate_ui(main_window)
         QtCore.QMetaObject.connectSlotsByName(main_window)
 
@@ -168,6 +172,45 @@ class RemoteMain(object):
         """
         start
         """
+
+    def __speed_up_button_clicked(self):
+        self.command_text.setText(_translate("main_window", "Speed increased", None))
+        self.__send_command('SPEED_UP')
+
+    def __speed_down_button_clicked(self):
+        self.command_text.setText(_translate("main_window", "Speed decreased", None))
+        self.__send_command('SPEED_DOWN')
+
+    def __brake_button_clicked(self):
+        self.command_text.setText(_translate("main_window", "Brake activated", None))
+        self.__send_command('BRAKE')
+
+    def __send_command(self, command_type):
+        if command_type == 'SPEED_UP':
+            self.__controller.execute_command('SPEED_UP')
+        elif command_type == 'SPEED_DOWN':
+            self.__controller.execute_command('SPEED_DOWN')
+        elif command_type == 'BRAKE':
+            self.__controller.execute_command('BRAKE')
+
+    def key_press_event(self, event):
+        """
+        key press
+        """
+        key = event.key()
+        if chr(key) == 'W':
+            self.__controller.execute_command('SPEED_UP')
+        if chr(key) == 'A':
+            self.__controller.execute_command('GO_LEFT')
+        if chr(key) == 'S':
+            self.__controller.execute_command('SPEED_DOWN')
+        if chr(key) == 'D':
+            self.__controller.execute_command('GO_RIGHT')
+        if chr(key) == 'M':
+            self.__controller.execute_command('BRAKE')
+        if chr(key) == 'R':
+            self.__controller.execute_command('REAR')
+
 
 if __name__ == "__main__":
     MAIN_APP = QtGui.QApplication(sys.argv)

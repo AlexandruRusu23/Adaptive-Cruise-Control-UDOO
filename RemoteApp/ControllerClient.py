@@ -50,37 +50,25 @@ class ControllerClient(threading.Thread):
         self.__is_running = False
         self.__is_running_lock.release()
 
-    def key_press_event(self, event):
-        """
-        key press
-        """
-        key = event.key()
-        if chr(key) == 'W':
-            self.execute_command('SPEED_UP')
-        if chr(key) == 'A':
-            self.execute_command('GO_LEFT')
-        if chr(key) == 'S':
-            self.execute_command('SPEED_DOWN')
-        if chr(key) == 'D':
-            self.execute_command('GO_RIGHT')
-        if chr(key) == 'M':
-            self.execute_command('BRAKE')
-        if chr(key) == 'R':
-            self.execute_command('REAR')
-
     def execute_command(self, command_type):
         """
         give a command and it will be sent to CarApp
         """
         if command_type == 'GO_LEFT':
             self.__command_list.append('5/')
+            print 'left'
         elif command_type == 'GO_RIGHT':
             self.__command_list.append('4/')
+            print 'right'
         elif command_type == 'SPEED_UP':
             self.__command_list.append('1/')
+            print 'upp'
         elif command_type == 'SPEED_DOWN':
             self.__command_list.append('2/')
+            print 'down'
         elif command_type == 'BRAKE':
+            print 'brake'
             self.__command_list.append('3/')
         elif command_type == 'REAR':
             self.__command_list.append('6/')
+            print 'rear'

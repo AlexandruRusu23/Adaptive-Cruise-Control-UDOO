@@ -9,7 +9,7 @@ import sys
 import cv2
 import numpy
 
-class Streamer(threading.Thread):
+class StreamerServer(threading.Thread):
     """
     Streamer class
     """
@@ -40,6 +40,8 @@ class Streamer(threading.Thread):
                     if bool(ret) is True:
                         encode_parameter = [int(cv2.IMWRITE_JPEG_QUALITY), 60]
                         result, encryp_image = cv2.imencode('.jpg', current_frame, encode_parameter)
+                        if bool(result) is False:
+                            break
                         data = numpy.array(encryp_image)
                         string_data = data.tostring()
 
@@ -61,3 +63,11 @@ class Streamer(threading.Thread):
             self.__is_running_lock.release()
             if bool(condition) is False:
                 break
+
+    def stop(self):
+        """
+        Stop the Streamer Server
+        """
+        self.__is_running_lock.acquire()
+        self.__is_running = False
+        self.__is_running_lock.release()

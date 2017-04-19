@@ -7,7 +7,7 @@ import threading
 import socket
 import SerialManager
 
-class Controller(threading.Thread):
+class ControllerServer(threading.Thread):
     """
     Controller class
     Is has to comunicate with the remote app to send the setup commands
