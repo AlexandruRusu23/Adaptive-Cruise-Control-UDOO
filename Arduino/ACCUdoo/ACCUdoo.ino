@@ -1,28 +1,28 @@
-#include <Wire.h>
-#include <Adafruit_MotorShield.h>
-#include "utility/Adafruit_MS_PWMServoDriver.h"
+const int IN1 = 7;
+const int IN2 = 6;
+const int IN3 = 5;
+const int IN4 = 4;
 
-Adafruit_MotorShield AFMS = Adafruit_MotorShield(); 
+#define LEFT_SIDE 1
+#define RIGHT_SIDE 0
 
-Adafruit_DCMotor *rightBackMotor = AFMS.getMotor(1);
-Adafruit_DCMotor *leftBackMotor = AFMS.getMotor(2);
-Adafruit_DCMotor *leftFrontMotor = AFMS.getMotor(3);
-Adafruit_DCMotor *rightFrontMotor = AFMS.getMotor(4);
+const int RightSideMotors = 9;
+const int LeftSideMotors = 3;
 
-#define RIGHT_BACK_MOTOR 0
-#define LEFT_BACK_MOTOR 1
-#define LEFT_FRONT_MOTOR 2
-#define RIGHT_FRONT_MOTOR 3
-
-int motorSpeedValue[4] = {0, 0, 0, 0};
-bool GoBackWard[4] = {false, false, false, false};
+int motorSpeedValue[2] = {0, 0};
+bool GoBackWard[2] = {false, false};
 
 unsigned long serialData;
 int inByte;
 
 void setup()
 {
-  AFMS.begin();
+  pinMode (IN1, OUTPUT);
+  pinMode (IN2, OUTPUT);
+  pinMode (IN3, OUTPUT);
+  pinMode (IN4, OUTPUT);
+  pinMode (ENA, OUTPUT);
+  pinMode (ENB, OUTPUT);
   Serial.begin(115200);
 }
 
@@ -30,46 +30,51 @@ void loop()
 {
   CommandManager();
   //right - back motor
-  rightBackMotor->setSpeed(motorSpeedValue[0]);
-  if (!GoBackWard[RIGHT_BACK_MOTOR])
-    rightBackMotor->run(FORWARD);
-   else
-    rightBackMotor->run(BACKWARD);
-  //left - back motor
-  leftBackMotor->setSpeed(motorSpeedValue[1]);
-  if (!GoBackWard[LEFT_BACK_MOTOR]) 
-    leftBackMotor->run(FORWARD);
+
+  analogWrite(RightSideMotors, motorSpeedValue[RIGHT_SIDE]); // dreapta
+  analogWrite(LeftSideMotors, motorSpeedValue[LEFT_SIDE]);
+
+  if (GoBackWard[0] == false)
+  {
+    digitalWrite(IN1, HIGH);
+    digitalWrite(IN2, LOW);
+  }
   else
-    leftBackMotor->run(BACKWARD);
-  //left - front motor
-  leftFrontMotor->setSpeed(motorSpeedValue[2]);
-  if (!GoBackWard[LEFT_FRONT_MOTOR]) 
-    leftFrontMotor->run(FORWARD);
+  {
+    digitalWrite(IN1, LOW);
+    digitalWrite(IN2, HIGH);
+  }
+
+  if (GoBackWard[1] == false)
+  {
+    digitalWrite(IN3, HIGH);
+    digitalWrite(IN4, LOW);
+  }
   else
-    leftFrontMotor->run(BACKWARD);
-  //rigth - front motor
-  rightFrontMotor->setSpeed(motorSpeedValue[3]);
-  if (!GoBackWard[RIGHT_FRONT_MOTOR]) 
-    rightFrontMotor->run(FORWARD);
-  else
-    rightFrontMotor->run(BACKWARD);
+  {
+    digitalWrite(IN3, LOW);
+    digitalWrite(IN4, HIGH);
+  }
+  
   delay(50);
 }
 
 long getSerial()
 {
   serialData = 0;
-  while(inByte != '/')
+  if (Serial.available() > 0)
   {
-    inByte = Serial.read();
-    if(inByte > 0 && inByte != '/')
+    while(inByte != '/')
     {
-      serialData = serialData * 10 + inByte - '0';
-      //Serial.println(serialData);
+      inByte = Serial.read();
+      if(inByte > 0 && inByte != '/')
+      {
+        serialData = serialData * 10 + inByte - '0';
+        //Serial.println(serialData);
+      }
     }
+    inByte = 0;
   }
-
-  inByte = 0;
   return serialData;
 }
 
@@ -80,7 +85,7 @@ void CommandManager()
   {
     case 1: // speed up
     {
-      for(int i = 0; i<4; i++)
+      for(int i = 0; i<2; i++)
       {
         if(motorSpeedValue[i] < 100)
           motorSpeedValue[i] = 100;
@@ -91,7 +96,7 @@ void CommandManager()
     }
     case 2: // speed down
     {
-      for(int i = 0; i<4; i++)
+      for(int i = 0; i<2; i++)
       {
         if (motorSpeedValue[i] > 100)
           motorSpeedValue[i] -= 10;
@@ -102,61 +107,69 @@ void CommandManager()
     }
     case 3: // brake
     {
-      for(int i = 0; i<4; i++)
+      for(int i = 0; i<2; i++)
       {
         GoBackWard[i] = false;
       }
-      for(int i = 0; i<4; i++)
+      for(int i = 0; i<2; i++)
       {
         motorSpeedValue[i] = 0;
       }
       break;
     }
-    case 4: // turn right
-    {
-      for(int i = 0; i<4; i++)
+    case 4: // turn left
+    {  
+      if (motorSpeedValue[LEFT_SIDE] > 70)
       {
-        if(motorSpeedValue[i] < 70)
-          motorSpeedValue[i] = 70;
+        motorSpeedValue[LEFT_SIDE] -= 10;
       }
-      
-      if (motorSpeedValue[LEFT_BACK_MOTOR] > 70)
+      else
       {
-        motorSpeedValue[LEFT_BACK_MOTOR] -= 10;
-        motorSpeedValue[LEFT_FRONT_MOTOR] = motorSpeedValue[LEFT_BACK_MOTOR];
+        motorSpeedValue[LEFT_SIDE] = 70;
       }
 
-      if (motorSpeedValue[RIGHT_FRONT_MOTOR] < 250)
+      if (motorSpeedValue[RIGHT_SIDE] < 70)
       {
-        motorSpeedValue[RIGHT_FRONT_MOTOR] += 10;
-        motorSpeedValue[RIGHT_BACK_MOTOR] = motorSpeedValue[RIGHT_FRONT_MOTOR];
+        motorSpeedValue[RIGHT_SIDE] = 70;
+      }
+      else if (motorSpeedValue[RIGHT_SIDE] < 250)
+      {
+        motorSpeedValue[RIGHT_SIDE] += 10;
+      }
+      else
+      {
+        motorSpeedValue[RIGHT_SIDE] = 255;
       }
       break;
     }
-    case 5: // turn left
+    case 5: // turn right
     {
-      for(int i = 0; i<4; i++)
+      if (motorSpeedValue[RIGHT_SIDE] > 70)
       {
-        if(motorSpeedValue[i] < 70)
-          motorSpeedValue[i] = 70;
+        motorSpeedValue[RIGHT_SIDE] -= 10;
       }
-     
-      if (motorSpeedValue[LEFT_BACK_MOTOR] < 250)
+      else
       {
-        motorSpeedValue[LEFT_BACK_MOTOR] += 10;
-        motorSpeedValue[LEFT_FRONT_MOTOR] = motorSpeedValue[LEFT_BACK_MOTOR];
+        motorSpeedValue[RIGHT_SIDE] = 70;
       }
 
-      if (motorSpeedValue[RIGHT_FRONT_MOTOR] > 70)
+      if (motorSpeedValue[LEFT_SIDE] < 70)
       {
-        motorSpeedValue[RIGHT_FRONT_MOTOR] -= 10;
-        motorSpeedValue[RIGHT_BACK_MOTOR] = motorSpeedValue[RIGHT_FRONT_MOTOR];
+        motorSpeedValue[LEFT_SIDE] = 70;
+      }
+      else if (motorSpeedValue[LEFT_SIDE] < 250)
+      {
+        motorSpeedValue[LEFT_SIDE] += 10;
+      }
+      else
+      {
+        motorSpeedValue[LEFT_SIDE] = 255;
       }
       break;
     }
     case 6: // go back
     {
-      for(int i = 0; i<4; i++)
+      for(int i = 0; i<2; i++)
       {
         if(motorSpeedValue[i] < 100)
           motorSpeedValue[i] = 100;
