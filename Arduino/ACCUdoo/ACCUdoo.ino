@@ -21,8 +21,8 @@ void setup()
   pinMode (IN2, OUTPUT);
   pinMode (IN3, OUTPUT);
   pinMode (IN4, OUTPUT);
-  pinMode (ENA, OUTPUT);
-  pinMode (ENB, OUTPUT);
+  pinMode (RightSideMotors, OUTPUT);
+  pinMode (LeftSideMotors, OUTPUT);
   Serial.begin(115200);
 }
 
