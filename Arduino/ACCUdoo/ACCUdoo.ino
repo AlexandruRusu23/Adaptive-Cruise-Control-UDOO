@@ -3,10 +3,10 @@ const int LEFT_BACK_IN2 = 6;
 const int RIGHT_BACK_IN3 = 4;
 const int RIGHT_BACK_IN4 = 2;
 
-const int LEFT_FRONT_IN1 = 13;
-const int LEFT_FRONT_IN2 = 12;
-const int RIGHT_FRONT_IN3 = 8;
-const int RIGHT_FRONT_IN4 = 10;
+const int LEFT_FRONT_IN1 = 8;
+const int LEFT_FRONT_IN2 = 10;
+const int RIGHT_FRONT_IN3 = 12;
+const int RIGHT_FRONT_IN4 = 13;
 
 // motors indices in vector of speeds
 #define LEFT_FRONT_MOTOR 0
@@ -51,6 +51,8 @@ void loop()
 
   analogWrite(RightBackMotorPin, motorSpeedValue[RIGHT_BACK_MOTOR]);
   analogWrite(LeftBackMotorPin, motorSpeedValue[LEFT_BACK_MOTOR]);
+  analogWrite(RightFrontMotorPin, motorSpeedValue[RIGHT_FRONT_MOTOR]);
+  analogWrite(LeftFrontMotorPin, motorSpeedValue[LEFT_FRONT_MOTOR]);
 
   if (GoBackWard[0] == false)
   {
@@ -76,13 +78,13 @@ void loop()
 
   if (GoBackWard[2] == false)
   {
-    digitalWrite(LEFT_FRONTIN1, HIGH);
-    digitalWrite(LEFT_FRONTIN2, LOW);
+    digitalWrite(LEFT_FRONT_IN1, HIGH);
+    digitalWrite(LEFT_FRONT_IN2, LOW);
   }
   else
   {
-    digitalWrite(LEFT_FRONTIN1, LOW);
-    digitalWrite(LEFT_FRONTIN2, HIGH);
+    digitalWrite(LEFT_FRONT_IN1, LOW);
+    digitalWrite(LEFT_FRONT_IN2, HIGH);
   }
 
   if (GoBackWard[3] == false)
@@ -127,8 +129,8 @@ void CommandManager()
     {
       for(int i = 0; i<4; i++)
       {
-        if(motorSpeedValue[i] < 50)
-          motorSpeedValue[i] = 50;
+        if(motorSpeedValue[i] < 100)
+          motorSpeedValue[i] = 100;
         else if (motorSpeedValue[i] < 250)
           motorSpeedValue[i] += 10;
       }
@@ -138,7 +140,7 @@ void CommandManager()
     {
       for(int i = 0; i<4; i++)
       {
-        if (motorSpeedValue[i] > 50)
+        if (motorSpeedValue[i] > 100)
           motorSpeedValue[i] -= 10;
         else
           motorSpeedValue[i] = 0;
