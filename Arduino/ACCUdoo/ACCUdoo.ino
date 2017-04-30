@@ -3,11 +3,6 @@ const int LEFT_BACK_IN2 = 6;
 const int RIGHT_BACK_IN3 = 4;
 const int RIGHT_BACK_IN4 = 2;
 
-const int LEFT_FRONT_IN1 = 8;
-const int LEFT_FRONT_IN2 = 10;
-const int RIGHT_FRONT_IN3 = 12;
-const int RIGHT_FRONT_IN4 = 13;
-
 // motors indices in vector of speeds
 #define LEFT_FRONT_MOTOR 0
 #define RIGHT_FRONT_MOTOR 1
@@ -15,9 +10,9 @@ const int RIGHT_FRONT_IN4 = 13;
 #define RIGHT_BACK_MOTOR 3
 
 const int RightFrontMotorPin = 11;
-const int LeftFrontMotorPin = 9;
-const int RightBackMotorPin = 3;
-const int LeftBackMotorPin = 5;
+const int LeftFrontMotorPin = 10;
+const int RightBackMotorPin = 5;
+const int LeftBackMotorPin = 3;
 
 int motorSpeedValue[4] = {0, 0, 0, 0};
 bool GoBackWard[4] = {false, false, false, false};
@@ -31,12 +26,7 @@ void setup()
   pinMode (LEFT_BACK_IN2, OUTPUT);
   pinMode (RIGHT_BACK_IN3, OUTPUT);
   pinMode (RIGHT_BACK_IN4, OUTPUT);
-
-  pinMode (LEFT_FRONT_IN1, OUTPUT);
-  pinMode (LEFT_FRONT_IN2, OUTPUT);
-  pinMode (RIGHT_FRONT_IN3, OUTPUT);
-  pinMode (RIGHT_FRONT_IN4, OUTPUT);
-
+  
   pinMode (RightBackMotorPin, OUTPUT);
   pinMode (LeftBackMotorPin, OUTPUT);
   pinMode (RightFrontMotorPin, OUTPUT);
@@ -75,29 +65,7 @@ void loop()
     digitalWrite(RIGHT_BACK_IN3, LOW);
     digitalWrite(RIGHT_BACK_IN4, HIGH);
   }
-
-  if (GoBackWard[2] == false)
-  {
-    digitalWrite(LEFT_FRONT_IN1, HIGH);
-    digitalWrite(LEFT_FRONT_IN2, LOW);
-  }
-  else
-  {
-    digitalWrite(LEFT_FRONT_IN1, LOW);
-    digitalWrite(LEFT_FRONT_IN2, HIGH);
-  }
-
-  if (GoBackWard[3] == false)
-  {
-    digitalWrite(RIGHT_FRONT_IN3, HIGH);
-    digitalWrite(RIGHT_FRONT_IN4, LOW);
-  }
-  else
-  {
-    digitalWrite(RIGHT_FRONT_IN3, LOW);
-    digitalWrite(RIGHT_FRONT_IN4, HIGH);
-  }
-
+  
   delay(50);
 }
 
@@ -161,21 +129,13 @@ void CommandManager()
     }
     case 4: // turn left
     {
-      if (motorSpeedValue[LEFT_FRONT_MOTOR] > 50)
+      motorSpeedValue[LEFT_FRONT_MOTOR] = 0;
+      motorSpeedValue[LEFT_BACK_MOTOR] = 0;
+      
+      if (motorSpeedValue[RIGHT_FRONT_MOTOR] < 100)
       {
-        motorSpeedValue[LEFT_FRONT_MOTOR] -= 10;
-        motorSpeedValue[LEFT_BACK_MOTOR] -= 10;
-      }
-      else
-      {
-        motorSpeedValue[LEFT_FRONT_MOTOR] = 50;
-        motorSpeedValue[LEFT_BACK_MOTOR] = 50;
-      }
-
-      if (motorSpeedValue[RIGHT_FRONT_MOTOR] < 50)
-      {
-        motorSpeedValue[RIGHT_FRONT_MOTOR] = 50;
-        motorSpeedValue[RIGHT_BACK_MOTOR] = 50;
+        motorSpeedValue[RIGHT_FRONT_MOTOR] = 100;
+        motorSpeedValue[RIGHT_BACK_MOTOR] = 100;
       }
       else if (motorSpeedValue[RIGHT_FRONT_MOTOR] < 250)
       {
@@ -191,21 +151,13 @@ void CommandManager()
     }
     case 5: // turn right
     {
-      if (motorSpeedValue[RIGHT_FRONT_MOTOR] > 50)
+      motorSpeedValue[RIGHT_FRONT_MOTOR] = 0;
+      motorSpeedValue[RIGHT_BACK_MOTOR] = 0;
+      
+      if (motorSpeedValue[LEFT_FRONT_MOTOR] < 100)
       {
-        motorSpeedValue[RIGHT_FRONT_MOTOR] -= 10;
-        motorSpeedValue[RIGHT_BACK_MOTOR] -= 10;
-      }
-      else
-      {
-        motorSpeedValue[RIGHT_FRONT_MOTOR] = 50;
-        motorSpeedValue[RIGHT_BACK_MOTOR] = 50;
-      }
-
-      if (motorSpeedValue[LEFT_FRONT_MOTOR] < 50)
-      {
-        motorSpeedValue[LEFT_FRONT_MOTOR] = 50;
-        motorSpeedValue[LEFT_BACK_MOTOR] = 50;
+        motorSpeedValue[LEFT_FRONT_MOTOR] = 100;
+        motorSpeedValue[LEFT_BACK_MOTOR] = 100;
       }
       else if (motorSpeedValue[LEFT_FRONT_MOTOR] < 250)
       {
@@ -229,5 +181,5 @@ void CommandManager()
       }
     }
   }
-  Serial.flush();
+    Serial.flush();
 }
