@@ -1,36 +1,44 @@
-const int LEFT_BACK_IN1 = 7;
-const int LEFT_BACK_IN2 = 6;
-const int RIGHT_BACK_IN3 = 4;
-const int RIGHT_BACK_IN4 = 2;
+#define MAX_SPEED                 255
+#define MIN_SPEED                 100
+#define MAX_TRESHOLD              250
+#define MIN_TRESHOLD              100
+#define SPEED_UNIT                10
+
+const int MOTORS_IN1 =            7;
+const int MOTORS_IN2 =            6;
+const int MOTORS_IN3 =            4;
+const int MOTORS_IN4 =            2;
 
 // motors indices in vector of speeds
-#define LEFT_FRONT_MOTOR 0
-#define RIGHT_FRONT_MOTOR 1
-#define LEFT_BACK_MOTOR 2
-#define RIGHT_BACK_MOTOR 3
+#define LEFT_FRONT                0
+#define RIGHT_FRONT               1
+#define LEFT_BACK                 2
+#define RIGHT_BACK                3
 
-const int RightFrontMotorPin = 11;
-const int LeftFrontMotorPin = 10;
-const int RightBackMotorPin = 5;
-const int LeftBackMotorPin = 3;
+#define MOTORS_NR                 4
 
-int motorSpeedValue[4] = {0, 0, 0, 0};
-bool GoBackWard[4] = {false, false, false, false};
+const int RightFrontMotorPin  =   11;
+const int LeftFrontMotorPin   =   10;
+const int RightBackMotorPin   =   5;
+const int LeftBackMotorPin    =   3;
+
+int motorSpeedValue[MOTORS_NR] = {0, 0, 0, 0};
+bool GoBackWard[MOTORS_NR] = {false, false, false, false};
 
 unsigned long serialData;
 int inByte;
 
 void setup()
 {
-  pinMode (LEFT_BACK_IN1, OUTPUT);
-  pinMode (LEFT_BACK_IN2, OUTPUT);
-  pinMode (RIGHT_BACK_IN3, OUTPUT);
-  pinMode (RIGHT_BACK_IN4, OUTPUT);
+  pinMode (MOTORS_IN1,          OUTPUT);
+  pinMode (MOTORS_IN2,          OUTPUT);
+  pinMode (MOTORS_IN3,          OUTPUT);
+  pinMode (MOTORS_IN4,          OUTPUT);
   
-  pinMode (RightBackMotorPin, OUTPUT);
-  pinMode (LeftBackMotorPin, OUTPUT);
-  pinMode (RightFrontMotorPin, OUTPUT);
-  pinMode (LeftFrontMotorPin, OUTPUT);
+  pinMode (RightBackMotorPin,   OUTPUT);
+  pinMode (LeftBackMotorPin,    OUTPUT);
+  pinMode (RightFrontMotorPin,  OUTPUT);
+  pinMode (LeftFrontMotorPin,   OUTPUT);
 
   Serial.begin(115200);
 }
@@ -39,31 +47,31 @@ void loop()
 {
   CommandManager();
 
-  analogWrite(RightBackMotorPin, motorSpeedValue[RIGHT_BACK_MOTOR]);
-  analogWrite(LeftBackMotorPin, motorSpeedValue[LEFT_BACK_MOTOR]);
-  analogWrite(RightFrontMotorPin, motorSpeedValue[RIGHT_FRONT_MOTOR]);
-  analogWrite(LeftFrontMotorPin, motorSpeedValue[LEFT_FRONT_MOTOR]);
+  analogWrite(RightBackMotorPin,    motorSpeedValue[RIGHT_BACK]);
+  analogWrite(LeftBackMotorPin,     motorSpeedValue[LEFT_BACK]);
+  analogWrite(RightFrontMotorPin,   motorSpeedValue[RIGHT_FRONT]);
+  analogWrite(LeftFrontMotorPin,    motorSpeedValue[LEFT_FRONT]);
 
   if (GoBackWard[0] == false)
   {
-    digitalWrite(LEFT_BACK_IN1, HIGH);
-    digitalWrite(LEFT_BACK_IN2, LOW);
+    digitalWrite(MOTORS_IN1, HIGH);
+    digitalWrite(MOTORS_IN2, LOW);
   }
   else
   {
-    digitalWrite(LEFT_BACK_IN1, LOW);
-    digitalWrite(LEFT_BACK_IN2, HIGH);
+    digitalWrite(MOTORS_IN1, LOW);
+    digitalWrite(MOTORS_IN2, HIGH);
   }
 
   if (GoBackWard[1] == false)
   {
-    digitalWrite(RIGHT_BACK_IN3, HIGH);
-    digitalWrite(RIGHT_BACK_IN4, LOW);
+    digitalWrite(MOTORS_IN3, HIGH);
+    digitalWrite(MOTORS_IN4, LOW);
   }
   else
   {
-    digitalWrite(RIGHT_BACK_IN3, LOW);
-    digitalWrite(RIGHT_BACK_IN4, HIGH);
+    digitalWrite(MOTORS_IN3, LOW);
+    digitalWrite(MOTORS_IN4, HIGH);
   }
   
   delay(50);
@@ -95,21 +103,27 @@ void CommandManager()
   {
     case 1: // speed up
     {
-      for(int i = 0; i<4; i++)
+      int maxim = motorSpeedValue[0];
+      for(int i = 0; i<MOTORS_NR; i++)
+        if (maxim < motorSpeedValue[i])
+          maxim = motorSpeedValue[i];
+
+      for(int i = 0; i<MOTORS_NR; i++)
       {
-        if(motorSpeedValue[i] < 100)
-          motorSpeedValue[i] = 100;
-        else if (motorSpeedValue[i] < 250)
-          motorSpeedValue[i] += 10;
+        motorSpeedValue[i] = maxim;
+        if(motorSpeedValue[i] < MIN_TRESHOLD)
+          motorSpeedValue[i] = MIN_SPEED;
+        else if (motorSpeedValue[i] < MAX_TRESHOLD)
+          motorSpeedValue[i] += SPEED_UNIT;
       }
       break;
     }
     case 2: // speed down
     {
-      for(int i = 0; i<4; i++)
+      for(int i = 0; i<MOTORS_NR; i++)
       {
-        if (motorSpeedValue[i] > 100)
-          motorSpeedValue[i] -= 10;
+        if (motorSpeedValue[i] > MIN_TRESHOLD)
+          motorSpeedValue[i] -= SPEED_UNIT;
         else
           motorSpeedValue[i] = 0;
       }
@@ -117,66 +131,63 @@ void CommandManager()
     }
     case 3: // brake
     {
-      for(int i = 0; i<4; i++)
+      for(int i = 0; i<MOTORS_NR; i++)
       {
         GoBackWard[i] = false;
-      }
-      for(int i = 0; i<4; i++)
-      {
         motorSpeedValue[i] = 0;
       }
       break;
     }
     case 4: // turn left
     {
-      motorSpeedValue[LEFT_FRONT_MOTOR] = 0;
-      motorSpeedValue[LEFT_BACK_MOTOR] = 0;
+      motorSpeedValue[LEFT_FRONT] = 0;
+      motorSpeedValue[LEFT_BACK] = 0;
       
-      if (motorSpeedValue[RIGHT_FRONT_MOTOR] < 100)
+      if (motorSpeedValue[RIGHT_FRONT] < MIN_TRESHOLD)
       {
-        motorSpeedValue[RIGHT_FRONT_MOTOR] = 100;
-        motorSpeedValue[RIGHT_BACK_MOTOR] = 100;
+        motorSpeedValue[RIGHT_FRONT] = MIN_SPEED;
+        motorSpeedValue[RIGHT_BACK] = MIN_SPEED;
       }
-      else if (motorSpeedValue[RIGHT_FRONT_MOTOR] < 250)
+      else if (motorSpeedValue[RIGHT_FRONT] < MAX_TRESHOLD)
       {
-        motorSpeedValue[RIGHT_FRONT_MOTOR] += 10;
-        motorSpeedValue[RIGHT_BACK_MOTOR] += 10;
+        motorSpeedValue[RIGHT_FRONT] += SPEED_UNIT;
+        motorSpeedValue[RIGHT_BACK] += SPEED_UNIT;
       }
       else
       {
-        motorSpeedValue[RIGHT_FRONT_MOTOR] = 255;
-        motorSpeedValue[RIGHT_BACK_MOTOR] = 255;
+        motorSpeedValue[RIGHT_FRONT] = MAX_SPEED;
+        motorSpeedValue[RIGHT_BACK] = MAX_SPEED;
       }
       break;
     }
     case 5: // turn right
     {
-      motorSpeedValue[RIGHT_FRONT_MOTOR] = 0;
-      motorSpeedValue[RIGHT_BACK_MOTOR] = 0;
+      motorSpeedValue[RIGHT_FRONT] = 0;
+      motorSpeedValue[RIGHT_BACK] = 0;
       
-      if (motorSpeedValue[LEFT_FRONT_MOTOR] < 100)
+      if (motorSpeedValue[LEFT_FRONT] < MIN_TRESHOLD)
       {
-        motorSpeedValue[LEFT_FRONT_MOTOR] = 100;
-        motorSpeedValue[LEFT_BACK_MOTOR] = 100;
+        motorSpeedValue[LEFT_FRONT] = MIN_SPEED;
+        motorSpeedValue[LEFT_BACK] = MIN_SPEED;
       }
-      else if (motorSpeedValue[LEFT_FRONT_MOTOR] < 250)
+      else if (motorSpeedValue[LEFT_FRONT] < MAX_TRESHOLD)
       {
-        motorSpeedValue[LEFT_FRONT_MOTOR] += 10;
-        motorSpeedValue[LEFT_BACK_MOTOR] += 10;
+        motorSpeedValue[LEFT_FRONT] += SPEED_UNIT;
+        motorSpeedValue[LEFT_BACK] += SPEED_UNIT;
       }
       else
       {
-        motorSpeedValue[LEFT_FRONT_MOTOR] = 255;
-        motorSpeedValue[LEFT_BACK_MOTOR] = 255;
+        motorSpeedValue[LEFT_FRONT] = MAX_SPEED;
+        motorSpeedValue[LEFT_BACK] = MAX_SPEED;
       }
       break;
     }
     case 6: // go back
     {
-      for(int i = 0; i<4; i++)
+      for(int i = 0; i<MOTORS_NR; i++)
       {
-        if(motorSpeedValue[i] < 100)
-          motorSpeedValue[i] = 100;
+        if(motorSpeedValue[i] < MIN_TRESHOLD)
+          motorSpeedValue[i] = MIN_SPEED;
         GoBackWard[i] = true;
       }
     }
