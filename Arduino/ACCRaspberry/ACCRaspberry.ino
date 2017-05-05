@@ -108,8 +108,8 @@ void CommandManager()
     }
     case 4: // turn left
     {
-      motorSpeedValue[LEFT_FRONT] = 0;
-      motorSpeedValue[LEFT_BACK] = 0;
+      motorSpeedValue[LEFT_FRONT_MOTOR] = 0;
+      motorSpeedValue[LEFT_BACK_MOTOR] = 0;
             
       if (motorSpeedValue[RIGHT_BACK_MOTOR] < 100)
       {
