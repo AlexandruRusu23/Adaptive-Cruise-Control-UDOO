@@ -106,12 +106,12 @@ class Controller(object):
 
     def __go_left(self):
         print "left"
-        self.sock.sendall("5/")
+        self.sock.sendall("4/")
         time.sleep(150/1000)
 
     def __go_right(self):
         print "right"
-        self.sock.sendall("4/")
+        self.sock.sendall("5/")
         time.sleep(150/1000)
 
     def __rear(self):

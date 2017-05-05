@@ -76,8 +76,8 @@ void CommandManager()
     {
       for(int i = 0; i<4; i++)
       {
-        if(motorSpeedValue[i] < 150)
-          motorSpeedValue[i] = 150;
+        if(motorSpeedValue[i] < 100)
+          motorSpeedValue[i] = 100;
         else if (motorSpeedValue[i] < 250)
           motorSpeedValue[i] += 10;
       }
@@ -87,8 +87,8 @@ void CommandManager()
     {
       for(int i = 0; i<4; i++)
       {
-        if (motorSpeedValue[i] > 150)
-          motorSpeedValue[i] -= 150;
+        if (motorSpeedValue[i] > 100)
+          motorSpeedValue[i] -= 100;
         else
           motorSpeedValue[i] = 0;
       }
@@ -106,45 +106,47 @@ void CommandManager()
       }
       break;
     }
-    case 4: // turn right
+    case 4: // turn left
     {
-      for(int i = 0; i<4; i++)
+      motorSpeedValue[LEFT_FRONT] = 0;
+      motorSpeedValue[LEFT_BACK] = 0;
+            
+      if (motorSpeedValue[RIGHT_BACK_MOTOR] < 100)
       {
-        if(motorSpeedValue[i] < 70)
-          motorSpeedValue[i] = 70;
+        motorSpeedValue[RIGHT_BACK_MOTOR] = 100;
+        motorSpeedValue[RIGHT_FRONT_MOTOR] = motorSpeedValue[RIGHT_BACK_MOTOR];
       }
-      
-      if (motorSpeedValue[LEFT_BACK_MOTOR] > 70)
-      {
-        motorSpeedValue[LEFT_BACK_MOTOR] -= 10;
-        motorSpeedValue[LEFT_FRONT_MOTOR] = motorSpeedValue[LEFT_BACK_MOTOR];
-      }
-
-      if (motorSpeedValue[RIGHT_FRONT_MOTOR] < 250)
+      else if (motorSpeedValue[RIGHT_FRONT_MOTOR] < 250)
       {
         motorSpeedValue[RIGHT_FRONT_MOTOR] += 10;
         motorSpeedValue[RIGHT_BACK_MOTOR] = motorSpeedValue[RIGHT_FRONT_MOTOR];
       }
+      else
+      {
+        motorSpeedValue[RIGHT_FRONT_MOTOR] = 255;
+        motorSpeedValue[RIGHT_BACK_MOTOR] = 255;
+      }
       break;
     }
-    case 5: // turn left
+    case 5: // turn right
     {
-      for(int i = 0; i<4; i++)
+      motorSpeedValue[RIGHT_FRONT_MOTOR] = 0;
+      motorSpeedValue[RIGHT_BACK_MOTOR] = 0;
+      
+      if (motorSpeedValue[LEFT_FRONT_MOTOR] < 100)
       {
-        if(motorSpeedValue[i] < 70)
-          motorSpeedValue[i] = 70;
+        motorSpeedValue[LEFT_FRONT_MOTOR] = 100;
+        motorSpeedValue[LEFT_BACK_MOTOR] = 100;
       }
-     
-      if (motorSpeedValue[LEFT_BACK_MOTOR] < 250)
+      else if (motorSpeedValue[LEFT_BACK_MOTOR] < 250)
       {
         motorSpeedValue[LEFT_BACK_MOTOR] += 10;
         motorSpeedValue[LEFT_FRONT_MOTOR] = motorSpeedValue[LEFT_BACK_MOTOR];
       }
-
-      if (motorSpeedValue[RIGHT_FRONT_MOTOR] > 70)
+      else
       {
-        motorSpeedValue[RIGHT_FRONT_MOTOR] -= 10;
-        motorSpeedValue[RIGHT_BACK_MOTOR] = motorSpeedValue[RIGHT_FRONT_MOTOR];
+        motorSpeedValue[LEFT_FRONT_MOTOR] = 255;
+        motorSpeedValue[LEFT_BACK_MOTOR] = 255;
       }
       break;
     }
@@ -152,8 +154,8 @@ void CommandManager()
     {
       for(int i = 0; i<4; i++)
       {
-        if(motorSpeedValue[i] < 150)
-          motorSpeedValue[i] = 150;
+        if(motorSpeedValue[i] < 100)
+          motorSpeedValue[i] = 100;
         GoBackWard[i] = true;
       }
     }
