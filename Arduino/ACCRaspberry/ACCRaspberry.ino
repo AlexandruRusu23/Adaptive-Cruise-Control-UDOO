@@ -5,10 +5,10 @@
 #define LEFT_FRONT_MOTOR 2
 #define RIGHT_FRONT_MOTOR 3
 
-AF_DCMotor rightBackMotor(1, MOTOR12_64KHZ);
-AF_DCMotor leftBackMotor(2, MOTOR12_64KHZ);
-AF_DCMotor leftFrontMotor(3, MOTOR12_64KHZ);
-AF_DCMotor rightFrontMotor(4, MOTOR12_64KHZ);
+AF_DCMotor rightBackMotor(2, MOTOR12_64KHZ);
+AF_DCMotor leftBackMotor(1, MOTOR12_64KHZ);
+AF_DCMotor leftFrontMotor(4, MOTOR12_64KHZ);
+AF_DCMotor rightFrontMotor(3, MOTOR12_64KHZ);
 
 int motorSpeedValue[4] = {0, 0, 0, 0};
 bool GoBackWard[4] = {false, false, false, false};
@@ -23,25 +23,25 @@ void setup() {
 void loop() {
   CommandManager();
   //right - back motor
-  rightBackMotor.setSpeed(motorSpeedValue[0]);
+  rightBackMotor.setSpeed(motorSpeedValue[RIGHT_BACK_MOTOR]);
   if (!GoBackWard[RIGHT_BACK_MOTOR])
     rightBackMotor.run(FORWARD);
    else
     rightBackMotor.run(BACKWARD);
   //left - back motor
-  leftBackMotor.setSpeed(motorSpeedValue[1]);
+  leftBackMotor.setSpeed(motorSpeedValue[LEFT_BACK_MOTOR]);
   if (!GoBackWard[LEFT_BACK_MOTOR]) 
     leftBackMotor.run(FORWARD);
   else
     leftBackMotor.run(BACKWARD);
   //left - front motor
-  leftFrontMotor.setSpeed(motorSpeedValue[2]);
+  leftFrontMotor.setSpeed(motorSpeedValue[LEFT_FRONT_MOTOR]);
   if (!GoBackWard[LEFT_FRONT_MOTOR]) 
     leftFrontMotor.run(FORWARD);
   else
     leftFrontMotor.run(BACKWARD);
   //rigth - front motor
-  rightFrontMotor.setSpeed(motorSpeedValue[3]);
+  rightFrontMotor.setSpeed(motorSpeedValue[RIGHT_FRONT_MOTOR]);
   if (!GoBackWard[RIGHT_FRONT_MOTOR]) 
     rightFrontMotor.run(FORWARD);
   else
