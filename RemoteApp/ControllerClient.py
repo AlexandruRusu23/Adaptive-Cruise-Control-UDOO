@@ -9,10 +9,10 @@ class ControllerClient(threading.Thread):
     """
     Controller Client Class
     """
-    def __init__(self, hostname='192.168.0.107', port=32555):
+    def __init__(self, hostname='192.168.0.106', port=32656):
         threading.Thread.__init__(self)
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.__server_adress = (hostname, port)
+        self.__server_address = (hostname, port)
         self.__command_list = []
         self.__command_list_lock = threading.Lock()
         self.__is_running = False
@@ -20,7 +20,7 @@ class ControllerClient(threading.Thread):
 
     def run(self):
         self.__is_running = True
-        self.__socket.connect(self.server_address)
+        self.__socket.connect(self.__server_address)
         commands = []
         while True:
             self.__command_list_lock.acquire()
@@ -55,20 +55,14 @@ class ControllerClient(threading.Thread):
         give a command and it will be sent to CarApp
         """
         if command_type == 'GO_LEFT':
-            self.__command_list.append('5/')
-            print 'left'
-        elif command_type == 'GO_RIGHT':
             self.__command_list.append('4/')
-            print 'right'
+        elif command_type == 'GO_RIGHT':
+            self.__command_list.append('5/')
         elif command_type == 'SPEED_UP':
             self.__command_list.append('1/')
-            print 'upp'
         elif command_type == 'SPEED_DOWN':
             self.__command_list.append('2/')
-            print 'down'
         elif command_type == 'BRAKE':
-            print 'brake'
             self.__command_list.append('3/')
         elif command_type == 'REAR':
             self.__command_list.append('6/')
-            print 'rear'

@@ -93,6 +93,7 @@ class RemoteMain(object):
         main_window.setObjectName(FROM_UTF8("main_window"))
         main_window.resize(660, 700)
         main_window.keyPressEvent = self.key_press_event
+        main_window.closeEvent = self.close_event
         self.centralwidget = QtGui.QWidget(main_window)
         self.centralwidget.setObjectName(FROM_UTF8("centralwidget"))
         self.grid_layout = QtGui.QGridLayout(self.centralwidget)
@@ -180,6 +181,9 @@ class RemoteMain(object):
         self.speed_down_button.clicked.connect(self.__speed_down_button_clicked)
         self.brake_button.clicked.connect(self.__brake_button_clicked)
 
+        self.__streamer.start()
+        self.__controller.start()
+
         self.retranslate_ui(main_window)
         QtCore.QMetaObject.connectSlotsByName(main_window)
 
@@ -237,11 +241,6 @@ class RemoteMain(object):
             self.__controller.execute_command('BRAKE')
         if chr(key) == 'R':
             self.__controller.execute_command('REAR')
-        if chr(key) == 'T':
-            self.__streamer.start()
-            # self.__streamer_image_thread = \
-            #     threading.Thread(target=self.__show_streamer_image, args=())
-            # self.__streamer_image_thread.start()
 
     def __update_frame(self):
         cv_image = self.__streamer.get_frame()
@@ -261,6 +260,14 @@ class RemoteMain(object):
             bpl = bpc * width
             image = QtGui.QImage(cv_image.data, width, height, bpl, QtGui.QImage.Format_RGB888)
             self.streamer_image_view.setImage(image)
+
+    def close_event(self, event):
+        """
+        close event
+        """
+        print event
+        self.__streamer.stop()
+        self.__controller.stop()
 
 if __name__ == "__main__":
     MAIN_APP = QtGui.QApplication(sys.argv)

@@ -13,7 +13,7 @@ class StreamerServer(threading.Thread):
     """
     Streamer class
     """
-    def __init__(self, host='192.168.0.101', port=8089):
+    def __init__(self, host='192.168.0.106', port=8089):
         threading.Thread.__init__(self)
         self.__socket = None
         self.__server_adress = (host, port)

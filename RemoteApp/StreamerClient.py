@@ -10,7 +10,7 @@ class StreamerClient(threading.Thread):
     """
     Streamer Client Class
     """
-    def __init__(self, hostname='192.168.0.101', port=8089):
+    def __init__(self, hostname='192.168.0.106', port=8089):
         threading.Thread.__init__(self)
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.__server_address = (hostname, port)
@@ -44,6 +44,14 @@ class StreamerClient(threading.Thread):
             #     break
 
         self.__socket.close()
+
+    def stop(self):
+        """
+        stop the streamer client
+        """
+        self.__is_running_lock.acquire()
+        self.__is_running = False
+        self.__is_running_lock.release()
 
     def get_frame(self):
         """
