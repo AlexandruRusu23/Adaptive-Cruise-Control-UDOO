@@ -13,20 +13,18 @@ class ControllerServer(threading.Thread):
     Is has to comunicate with the remote app to send the setup commands
     to Car using SerialManager
     """
-    def __init__(self):
+    def __init__(self, hostname='192.168.0.106', port=32656):
         threading.Thread.__init__(self)
         self.__serial_manager = None
         self.__is_running = False
         self.__is_running_lock = threading.Lock()
-
+        self.__server_address = (hostname, port)
         self.__socket = None
-        self.__server_address = None
 
     def run(self):
         self.__is_running = True
         self.__serial_manager = SerialManager.SerialManager('/dev/ttyACM0', 9600)
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.__server_address = ('192.168.0.104', 32654)
         self.__socket.bind(self.__server_address)
         # We want only one client
         self.__socket.listen(1)

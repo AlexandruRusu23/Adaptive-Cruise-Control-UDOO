@@ -1,6 +1,7 @@
 """
 Main application that will run on the car
 """
+import socket
 import threading
 import ControllerServer
 import StreamerServer
@@ -19,16 +20,19 @@ class CarMain(threading.Thread):
 
     def run(self):
         self.__is_running = True
-        self.__controller_server = ControllerServer.ControllerServer()
-        self.__streamer_server = StreamerServer.StreamerServer()
-        #self.__controller_server.start()
+        self.__controller_server = ControllerServer.ControllerServer(self.get_ip_address())
+        self.__streamer_server = StreamerServer.StreamerServer(self.get_ip_address())
+        self.__controller_server.start()
         self.__streamer_server.start()
         while True:
-            self.__is_running_lock.acquire()
-            condition = self.__is_running
-            self.__is_running_lock.release()
-            if bool(condition) is False:
-                break
+            try:
+                self.__is_running_lock.acquire()
+                condition = self.__is_running
+                self.__is_running_lock.release()
+                if bool(condition) is False:
+                    break
+            except KeyboardInterrupt:
+                self.stop()
 
     def stop(self):
         """
@@ -39,6 +43,14 @@ class CarMain(threading.Thread):
         self.__is_running_lock.release()
         self.__controller_server.stop()
         self.__streamer_server.stop()
+
+    def get_ip_address(self):
+        """
+        get your current ip address
+        """
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.connect(("8.8.8.8", 80))
+        return sock.getsockname()[0]
 
 carMain = CarMain()
 carMain.start()
