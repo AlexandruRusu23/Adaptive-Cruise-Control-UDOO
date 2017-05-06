@@ -21,7 +21,7 @@ class CarMain(threading.Thread):
         self.__is_running = True
         self.__controller_server = ControllerServer.ControllerServer()
         self.__streamer_server = StreamerServer.StreamerServer()
-        self.__controller_server.start()
+        #self.__controller_server.start()
         self.__streamer_server.start()
         while True:
             self.__is_running_lock.acquire()
@@ -39,3 +39,6 @@ class CarMain(threading.Thread):
         self.__is_running_lock.release()
         self.__controller_server.stop()
         self.__streamer_server.stop()
+
+carMain = CarMain()
+carMain.start()

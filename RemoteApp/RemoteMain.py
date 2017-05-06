@@ -2,6 +2,8 @@
 Main for Remote App
 """
 import sys
+import threading
+import cv2
 from PyQt4 import QtCore, QtGui
 import ControllerClient
 import StreamerClient
@@ -25,6 +27,23 @@ except AttributeError:
     def _translate(context, text, disambig):
         return QtGui.QApplication.translate(context, text, disambig)
 
+class OwnImageWidget(QtGui.QWidget):
+    def __init__(self, parent=None):
+        super(OwnImageWidget, self).__init__(parent)
+        self.image = None
+
+    def setImage(self, image):
+        self.image = image
+        sz = image.size()
+        self.setMinimumSize(sz)
+        self.update()
+
+    def paintEvent(self, event):
+        qp = QtGui.QPainter()
+        qp.begin(self)
+        if self.image:
+            qp.drawImage(QtCore.QPoint(0, 0), self.image)
+        qp.end()
 
 class RemoteMain(object):
     """
@@ -37,6 +56,10 @@ class RemoteMain(object):
         """
         self.__controller = ControllerClient.ControllerClient()
         self.__streamer = StreamerClient.StreamerClient()
+        self.__streamer_image_thread = None
+
+        self.window_width = None
+        self.window_height = None
 
         self.centralwidget = None
         self.grid_layout = None
@@ -61,6 +84,7 @@ class RemoteMain(object):
         self.command_label = None
         self.command_text = None
         self.statusbar = None
+        self.timer = None
 
     def setup_ui(self, main_window):
         """
@@ -84,7 +108,8 @@ class RemoteMain(object):
         self.grid_layout.addLayout(self.distance_buttons_layout, 1, 0, 3, 1)
         self.streamer_image_layout = QtGui.QVBoxLayout()
         self.streamer_image_layout.setObjectName(FROM_UTF8("streamer_image_layout"))
-        self.streamer_image_view = QtGui.QGraphicsView(self.centralwidget)
+        self.streamer_image_view = QtGui.QLabel(self.centralwidget)
+        self.streamer_image_view = OwnImageWidget(self.streamer_image_view)
         self.streamer_image_view.setMinimumSize(QtCore.QSize(640, 480))
         self.streamer_image_view.setObjectName(FROM_UTF8("streamer_image_view"))
         self.streamer_image_layout.addWidget(self.streamer_image_view)
@@ -144,6 +169,13 @@ class RemoteMain(object):
         self.statusbar.setObjectName(FROM_UTF8("statusbar"))
         main_window.setStatusBar(self.statusbar)
 
+        self.timer = QtCore.QTimer(self.centralwidget)
+        self.timer.timeout.connect(self.__update_frame)
+        self.timer.start(1)
+
+        self.window_width = self.streamer_image_view.frameSize().width()
+        self.window_height = self.streamer_image_view.frameSize().height()
+
         self.speed_up_button.clicked.connect(self.__speed_up_button_clicked)
         self.speed_down_button.clicked.connect(self.__speed_down_button_clicked)
         self.brake_button.clicked.connect(self.__brake_button_clicked)
@@ -167,11 +199,6 @@ class RemoteMain(object):
         self.cruise_distance_label.setText(_translate("main_window", "Cruise Distance", None))
         self.detection_label.setText(_translate("main_window", "Detection", None))
         self.command_label.setText(_translate("main_window", "Command", None))
-
-    def start(self):
-        """
-        start
-        """
 
     def __speed_up_button_clicked(self):
         self.command_text.setText(_translate("main_window", "Speed increased", None))
@@ -210,7 +237,30 @@ class RemoteMain(object):
             self.__controller.execute_command('BRAKE')
         if chr(key) == 'R':
             self.__controller.execute_command('REAR')
+        if chr(key) == 'T':
+            self.__streamer.start()
+            # self.__streamer_image_thread = \
+            #     threading.Thread(target=self.__show_streamer_image, args=())
+            # self.__streamer_image_thread.start()
 
+    def __update_frame(self):
+        cv_image = self.__streamer.get_frame()
+        if cv_image is not None:
+            img_height, img_width, img_colors = cv_image.shape
+            scale_w = float(self.window_width) / float(img_width)
+            scale_h = float(self.window_height) / float(img_height)
+            scale = min([scale_w, scale_h])
+
+            if scale == 0:
+                scale = 1
+
+            cv_image = \
+                cv2.resize(cv_image, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
+            cv_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB)
+            height, width, bpc = cv_image.shape
+            bpl = bpc * width
+            image = QtGui.QImage(cv_image.data, width, height, bpl, QtGui.QImage.Format_RGB888)
+            self.streamer_image_view.setImage(image)
 
 if __name__ == "__main__":
     MAIN_APP = QtGui.QApplication(sys.argv)

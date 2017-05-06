@@ -3,7 +3,7 @@ import sys
 import time
 import cv2
 import numpy
-HOST='192.168.0.104'
+HOST='192.168.0.101'
 PORT=8088
 
 sock=socket.socket(socket.AF_INET,socket.SOCK_STREAM)

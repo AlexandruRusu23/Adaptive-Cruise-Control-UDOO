@@ -17,7 +17,7 @@ def recvall(sock, count):
     return buf
 
 clientsocket=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-clientsocket.connect(('192.168.0.104', 8088))
+clientsocket.connect(('192.168.0.108', 8088))
 while True:
 	length = recvall(clientsocket, 4096)
 	if length is None:

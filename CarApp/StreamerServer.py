@@ -13,7 +13,7 @@ class StreamerServer(threading.Thread):
     """
     Streamer class
     """
-    def __init__(self, host='192.168.0.104', port=8088):
+    def __init__(self, host='192.168.0.101', port=8089):
         threading.Thread.__init__(self)
         self.__socket = None
         self.__server_adress = (host, port)
@@ -28,15 +28,15 @@ class StreamerServer(threading.Thread):
         # We want only one client
         self.__socket.listen(1)
         while True:
+            print >>sys.stderr, 'waiting for a connection'
+            print self.__server_adress
             connection, client_address = self.__socket.accept()
             try:
                 print >>sys.stderr, 'connection from', client_address
                 camera = cv2.VideoCapture(0)
 
-                #current_time = time.time()
-
                 while True:
-                    ret, current_frame = cap.read()
+                    ret, current_frame = camera.read()
                     if bool(ret) is True:
                         encode_parameter = [int(cv2.IMWRITE_JPEG_QUALITY), 60]
                         result, encryp_image = cv2.imencode('.jpg', current_frame, encode_parameter)
@@ -62,6 +62,8 @@ class StreamerServer(threading.Thread):
             condition = self.__is_running
             self.__is_running_lock.release()
             if bool(condition) is False:
+                connection.close()
+                camera.release()
                 break
 
     def stop(self):
