@@ -2,6 +2,7 @@
 Recorder module
 """
 import threading
+import socket
 import cv2
 import numpy
 
@@ -21,7 +22,14 @@ class Recorder(threading.Thread):
 
     def run(self):
         self.__is_running = True
-        self.__camera = cv2.VideoCapture(0) #get rid of the 0 hardcodation
+        hostname = socket.gethostname()
+        if 'pi' in hostname:
+            self.__camera = cv2.VideoCapture(0)
+        elif 'udoo' in hostname:
+            self.__camera = cv2.VideoCapture(1)
+        else: #computer
+            self.__camera = cv2.VideoCapture(0)
+
         while True:
             self.__frame_lock.acquire()
             ret, self.__frame = self.__camera.read()

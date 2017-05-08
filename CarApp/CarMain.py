@@ -41,6 +41,7 @@ class CarMain(threading.Thread):
                     break
             except KeyboardInterrupt:
                 self.stop()
+
         self.__controller_server.join()
         self.__streamer_server.join()
         self.__recorder.join()

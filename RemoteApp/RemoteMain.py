@@ -2,7 +2,6 @@
 Main for Remote App
 """
 import sys
-import threading
 import cv2
 from PyQt4 import QtCore, QtGui
 import ControllerClient
@@ -28,22 +27,32 @@ except AttributeError:
         return QtGui.QApplication.translate(context, text, disambig)
 
 class OwnImageWidget(QtGui.QWidget):
+    """
+    own class for image widget (adapted for numpy arrays)
+    """
     def __init__(self, parent=None):
         super(OwnImageWidget, self).__init__(parent)
         self.image = None
 
-    def setImage(self, image):
+    def set_image(self, image):
+        """
+        set the current image to be showed
+        """
         self.image = image
-        sz = image.size()
-        self.setMinimumSize(sz)
+        image_size = image.size()
+        self.setMinimumSize(image_size)
         self.update()
 
+    #overwritten function from Qt Library
     def paintEvent(self, event):
-        qp = QtGui.QPainter()
-        qp.begin(self)
+        """
+        paint event
+        """
+        qpainter = QtGui.QPainter()
+        qpainter.begin(self)
         if self.image:
-            qp.drawImage(QtCore.QPoint(0, 0), self.image)
-        qp.end()
+            qpainter.drawImage(QtCore.QPoint(0, 0), self.image)
+        qpainter.end()
 
 class RemoteMain(object):
     """
@@ -259,7 +268,7 @@ class RemoteMain(object):
             height, width, bpc = cv_image.shape
             bpl = bpc * width
             image = QtGui.QImage(cv_image.data, width, height, bpl, QtGui.QImage.Format_RGB888)
-            self.streamer_image_view.setImage(image)
+            self.streamer_image_view.set_image(image)
 
     def close_event(self, event):
         """

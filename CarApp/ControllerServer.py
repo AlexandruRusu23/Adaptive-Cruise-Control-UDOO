@@ -31,7 +31,11 @@ class ControllerServer(threading.Thread):
         self.__is_running = True
         self.__find_board()
         if len(self.__board_name) > 0:
-            self.__serial_manager = SerialManager.SerialManager(self.__board_name[0], 9600)
+            hostname = socket.gethostname()
+            if 'pi' in hostname:
+                self.__serial_manager = SerialManager.SerialManager(self.__board_name[0], 9600)
+            elif 'udoo' in hostname:
+                self.__serial_manager = SerialManager.SerialManager(self.__board_name[0], 115200)
         else:
             print 'Controller Stoped'
             self.stop()
