@@ -2,6 +2,7 @@
 Recorder module
 """
 import threading
+import time
 import socket
 import cv2
 import numpy
@@ -13,14 +14,15 @@ class Recorder(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
         self.__camera = None
-        self.__frame = None
-        self.__frame_lock = threading.Lock()
         self.__frame_encrypted = None
         self.__frame_encrypted_lock = threading.Lock()
         self.__is_running = False
         self.__is_running_lock = threading.Lock()
+        self.__encode_parameter = [int(cv2.IMWRITE_JPEG_QUALITY), 60]
+        self.__check_timer = None
 
     def run(self):
+        self.__check_timer = time.time()
         self.__is_running = True
         hostname = socket.gethostname()
         if 'pi' in hostname:
@@ -31,27 +33,25 @@ class Recorder(threading.Thread):
             self.__camera = cv2.VideoCapture(0)
 
         while True:
-            self.__frame_lock.acquire()
-            ret, self.__frame = self.__camera.read()
-            self.__frame_lock.release()
+            ret, frame = self.__camera.read()
             if bool(ret) is True:
-                encode_parameter = [int(cv2.IMWRITE_JPEG_QUALITY), 60]
-                self.__frame_lock.acquire()
-                result, encryp_image = cv2.imencode('.jpg', self.__frame, encode_parameter)
-                self.__frame_lock.release()
+                result, encrypted_image = cv2.imencode('.jpg', frame, self.__encode_parameter)
                 if bool(result) is False:
                     break
-                data = numpy.array(encryp_image)
+                data = numpy.array(encrypted_image)
                 self.__frame_encrypted_lock.acquire()
                 self.__frame_encrypted = data.tostring()
                 self.__frame_encrypted_lock.release()
             else:
                 break
-            self.__is_running_lock.acquire()
-            condition = self.__is_running
-            self.__is_running_lock.release()
-            if bool(condition) is False:
-                break
+            if time.time() - self.__check_timer > 1:
+                self.__is_running_lock.acquire()
+                condition = self.__is_running
+                self.__is_running_lock.release()
+                if bool(condition) is False:
+                    break
+                self.__check_timer = time.time()
+
         self.__camera.release()
 
     def stop(self):

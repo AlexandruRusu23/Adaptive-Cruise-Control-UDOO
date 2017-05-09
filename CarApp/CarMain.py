@@ -35,7 +35,6 @@ class CarMain(threading.Thread):
 
         self.__controller_server.stop()
         self.__streamer_server.stop()
-
         self.__controller_server.join()
         self.__streamer_server.join()
 

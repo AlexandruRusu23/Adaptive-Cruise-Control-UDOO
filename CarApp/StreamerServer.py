@@ -4,6 +4,7 @@ This module has to provide the live from the camera to the
 remote application
 """
 import threading
+import time
 import socket
 import sys
 import cv2
@@ -21,8 +22,11 @@ class StreamerServer(threading.Thread):
         self.__connection = None
         self.__is_running = False
         self.__is_running_lock = threading.Lock()
+        self.__encode_parameter = [int(cv2.IMWRITE_JPEG_QUALITY), 60]
+        self.__check_timer = None
 
     def run(self):
+        self.__check_timer = time.time()
         self.__is_running = True
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.__socket.bind(self.__server_adress)
@@ -49,26 +53,30 @@ class StreamerServer(threading.Thread):
                 while True:
                     ret, current_frame = self.__camera.read()
                     if bool(ret) is True:
-                        encode_parameter = [int(cv2.IMWRITE_JPEG_QUALITY), 60]
-                        result, encryp_image = cv2.imencode('.jpg', current_frame, encode_parameter)
+                        result, encrypted_image =                \
+                            cv2.imencode('.jpg', current_frame, self.__encode_parameter)
                         if bool(result) is False:
                             break
-                        data = numpy.array(encryp_image)
+                        data = numpy.array(encrypted_image)
                         string_data = data.tostring()
 
                         self.__connection.send(str(len(string_data)).ljust(4096))
                         self.__connection.send(string_data)
                     else:
                         break
-                    self.__is_running_lock.acquire()
-                    condition = self.__is_running
-                    self.__is_running_lock.release()
-                    if bool(condition) is False:
-                        break
+                    if time.time() - self.__check_timer > 1:
+                        self.__is_running_lock.acquire()
+                        condition = self.__is_running
+                        self.__is_running_lock.release()
+                        if bool(condition) is False:
+                            break
+                        self.__check_timer = time.time()
 
             finally:
                 self.__connection.close()
                 self.__camera.release()
+                self.stop()
+
             self.__is_running_lock.acquire()
             condition = self.__is_running
             self.__is_running_lock.release()

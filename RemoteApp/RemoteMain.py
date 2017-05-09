@@ -277,6 +277,8 @@ class RemoteMain(object):
         print event
         self.__streamer.stop()
         self.__controller.stop()
+        self.__streamer.join()
+        self.__controller.join()
 
 if __name__ == "__main__":
     MAIN_APP = QtGui.QApplication(sys.argv)

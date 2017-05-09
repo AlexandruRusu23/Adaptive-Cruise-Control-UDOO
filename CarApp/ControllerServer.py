@@ -49,6 +49,13 @@ class ControllerServer(threading.Thread):
             print client_address
             try:
                 while True:
+                    self.__is_running_lock.acquire()
+                    condition = self.__is_running
+                    self.__is_running_lock.release()
+
+                    if bool(condition) is False:
+                        break
+
                     data = connection.recv(1024) #valid
                     if data:
                         commands = []
@@ -58,16 +65,10 @@ class ControllerServer(threading.Thread):
                     else:
                         break
 
-                    self.__is_running_lock.acquire()
-                    condition = self.__is_running
-                    self.__is_running_lock.release()
-
-                    if bool(condition) is False:
-                        break
-
             finally:
                 # Clean up the connection
                 connection.close()
+
             self.__is_running_lock.acquire()
             condition = self.__is_running
             self.__is_running_lock.release()
