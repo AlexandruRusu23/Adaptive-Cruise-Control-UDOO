@@ -21,7 +21,7 @@ class CarMain(threading.Thread):
         self.__is_running = True
         self.__controller_server = ControllerServer.ControllerServer(self.get_ip_address())
         self.__streamer_server = StreamerServer.StreamerServer(self.get_ip_address())
-        #self.__controller_server.start()
+        self.__controller_server.start()
         self.__streamer_server.start()
         while True:
             try:

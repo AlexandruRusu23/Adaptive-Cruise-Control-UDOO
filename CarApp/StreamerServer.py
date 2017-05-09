@@ -43,6 +43,9 @@ class StreamerServer(threading.Thread):
                 else: #computer
                     self.__camera = cv2.VideoCapture(0)
 
+		ret = self.__camera.set(cv2.CAP_PROP_FRAME_WIDTH, 320);
+		ret = self.__camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 240);
+
                 while True:
                     ret, current_frame = self.__camera.read()
                     if bool(ret) is True:
