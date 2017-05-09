@@ -10,7 +10,7 @@ class StreamerClient(threading.Thread):
     """
     Streamer Client Class
     """
-    def __init__(self, hostname='192.168.0.103', port=8089):
+    def __init__(self, hostname='192.168.0.105', port=8089):
         threading.Thread.__init__(self)
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.__server_address = (hostname, port)
@@ -38,10 +38,6 @@ class StreamerClient(threading.Thread):
                 break
 
             self.__frame = cv2.imdecode(data, 1)
-            # cv2.imshow('frameClient', self.__frame)
-            # key = cv2.waitKey(33)
-            # if key == 27:
-            #     break
 
         self.__socket.close()
 

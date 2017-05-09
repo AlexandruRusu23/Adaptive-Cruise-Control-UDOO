@@ -191,7 +191,7 @@ class RemoteMain(object):
         self.brake_button.clicked.connect(self.__brake_button_clicked)
 
         self.__streamer.start()
-        #self.__controller.start()
+        self.__controller.start()
 
         self.retranslate_ui(main_window)
         QtCore.QMetaObject.connectSlotsByName(main_window)
