@@ -191,7 +191,7 @@ class RemoteMain(object):
         self.brake_button.clicked.connect(self.__brake_button_clicked)
 
         self.__streamer.start()
-        self.__controller.start()
+        #self.__controller.start()
 
         self.retranslate_ui(main_window)
         QtCore.QMetaObject.connectSlotsByName(main_window)
@@ -240,15 +240,15 @@ class RemoteMain(object):
         key = event.key()
         if chr(key) == 'W':
             self.__controller.execute_command('SPEED_UP')
-        if chr(key) == 'A':
+        elif chr(key) == 'A':
             self.__controller.execute_command('GO_LEFT')
-        if chr(key) == 'S':
+        elif chr(key) == 'S':
             self.__controller.execute_command('SPEED_DOWN')
-        if chr(key) == 'D':
+        elif chr(key) == 'D':
             self.__controller.execute_command('GO_RIGHT')
-        if chr(key) == 'M':
+        elif chr(key) == 'M':
             self.__controller.execute_command('BRAKE')
-        if chr(key) == 'R':
+        elif chr(key) == 'R':
             self.__controller.execute_command('REAR')
 
     def __update_frame(self):
