@@ -7,6 +7,12 @@ from PyQt4 import QtCore, QtGui
 import ControllerClient
 import StreamerClient
 
+SPEED_UP_ACTION = "Speed increased"
+SPEED_DOWN_ACTION = "Speed decreased"
+BRAKE_ACTION = "Brake activated"
+GO_TO_LEFT_ACTION = "Go to Left"
+GO_TO_RIGHT_ACTION = "Go to Right"
+
 try:
     #we want to use the same name form
     FROM_UTF8 = QtCore.QString.fromUtf8
@@ -94,6 +100,10 @@ class RemoteMain(object):
         self.command_text = None
         self.statusbar = None
         self.timer = None
+
+        self.__car_speed = 0
+        self.__car_preffered_speed = 0
+        self.__car_action = "Nothing"
 
     def setup_ui(self, main_window):
         """
@@ -214,15 +224,18 @@ class RemoteMain(object):
         self.command_label.setText(_translate("main_window", "Command", None))
 
     def __speed_up_button_clicked(self):
-        self.command_text.setText(_translate("main_window", "Speed increased", None))
+        self.__car_action = SPEED_UP_ACTION
+        self.__increase_car_speed()
         self.__send_command('SPEED_UP')
 
     def __speed_down_button_clicked(self):
-        self.command_text.setText(_translate("main_window", "Speed decreased", None))
+        self.__car_action = SPEED_DOWN_ACTION
+        self.__decrease_car_speed()
         self.__send_command('SPEED_DOWN')
 
     def __brake_button_clicked(self):
-        self.command_text.setText(_translate("main_window", "Brake activated", None))
+        self.__car_action = BRAKE_ACTION
+        self.__car_speed = 0
         self.__send_command('BRAKE')
 
     def __send_command(self, command_type):
@@ -240,14 +253,24 @@ class RemoteMain(object):
         key = event.key()
         if chr(key) == 'W':
             self.__controller.execute_command('SPEED_UP')
+            self.__increase_car_speed()
+            self.__car_action = SPEED_UP_ACTION
         elif chr(key) == 'A':
             self.__controller.execute_command('GO_LEFT')
+            self.__increase_car_speed()
+            self.__car_action = GO_TO_LEFT_ACTION
         elif chr(key) == 'S':
             self.__controller.execute_command('SPEED_DOWN')
+            self.__decrease_car_speed()
+            self.__car_action = SPEED_DOWN_ACTION
         elif chr(key) == 'D':
             self.__controller.execute_command('GO_RIGHT')
+            self.__increase_car_speed()
+            self.__car_action = GO_TO_RIGHT_ACTION
         elif chr(key) == 'M':
             self.__controller.execute_command('BRAKE')
+            self.__car_speed = 0
+            self.__car_action = BRAKE_ACTION
         elif chr(key) == 'R':
             self.__controller.execute_command('REAR')
 
@@ -270,6 +293,9 @@ class RemoteMain(object):
             image = QtGui.QImage(cv_image.data, width, height, bpl, QtGui.QImage.Format_RGB888)
             self.streamer_image_view.set_image(image)
 
+        self.speed_text.setText(_translate("main_window", str(self.__car_speed), None))
+        self.command_text.setText(_translate("main_window", self.__car_action, None))
+
     def close_event(self, event):
         """
         close event
@@ -279,6 +305,22 @@ class RemoteMain(object):
         self.__controller.stop()
         self.__streamer.join()
         self.__controller.join()
+
+    def __increase_car_speed(self):
+        if self.__car_speed < 100:
+            self.__car_speed = 100
+        elif self.__car_speed < 250:
+            self.__car_speed = self.__car_speed + 10
+        else:
+            self.__car_speed = 255
+
+    def __decrease_car_speed(self):
+        if self.__car_speed == 255:
+            self.__car_speed = 250
+        elif self.__car_speed > 100:
+            self.__car_speed = self.__car_speed - 10
+        else:
+            self.__car_speed = 0
 
 if __name__ == "__main__":
     MAIN_APP = QtGui.QApplication(sys.argv)
