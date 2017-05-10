@@ -1,9 +1,23 @@
 #include <AFMotor.h>
 
-#define RIGHT_BACK_MOTOR 0
-#define LEFT_BACK_MOTOR 1
-#define LEFT_FRONT_MOTOR 2
-#define RIGHT_FRONT_MOTOR 3
+#define RIGHT_BACK_MOTOR          0
+#define LEFT_BACK_MOTOR           1
+#define LEFT_FRONT_MOTOR          2
+#define RIGHT_FRONT_MOTOR         3
+
+#define MAX_SPEED                 255
+#define MIN_SPEED                 120
+#define MAX_TRESHOLD              250
+#define MIN_TRESHOLD              120
+#define SPEED_UNIT                10
+
+const int MOTORS_IN1 =            7;
+const int MOTORS_IN2 =            6;
+const int MOTORS_IN3 =            4;
+const int MOTORS_IN4 =            2;
+
+#define MOTORS_NR                 4
+
 
 AF_DCMotor rightBackMotor(2, MOTOR12_64KHZ);
 AF_DCMotor leftBackMotor(1, MOTOR12_64KHZ);
@@ -12,6 +26,12 @@ AF_DCMotor rightFrontMotor(3, MOTOR12_64KHZ);
 
 int motorSpeedValue[4] = {0, 0, 0, 0};
 bool GoBackWard[4] = {false, false, false, false};
+
+int normalSpeed = 0;
+int directionSpeed = 0;
+String action;
+
+unsigned long print_timer = 0;
 
 unsigned long serialData;
 int inByte;
@@ -22,6 +42,13 @@ void setup() {
  
 void loop() {
   CommandManager();
+
+  if (millis() - print_timer > 500)
+  {
+    PrintCarData();
+    print_timer = millis();
+  }
+  
   //right - back motor
   rightBackMotor.setSpeed(motorSpeedValue[RIGHT_BACK_MOTOR]);
   if (!GoBackWard[RIGHT_BACK_MOTOR])
@@ -67,98 +94,146 @@ long getSerial()
   return serialData;
 }
 
+void PrintCarData()
+{
+  Serial.println("CAR_DATA");
+  Serial.print("SPEED: ");
+  if (action == "LEFT" || action == "RIGHT")
+    Serial.println(directionSpeed);
+  else
+    Serial.println(normalSpeed);
+  Serial.print("ACTION: ");
+  Serial.println(action);
+  Serial.println("END_CAR_DATA");
+  Serial.println("");
+}
+
+void updateVectorSpeed()
+{
+  for (int i = 0; i < MOTORS_NR; i++)
+  {
+    motorSpeedValue[i] = normalSpeed;
+  }
+}
+
 void CommandManager()
 {
   getSerial();
-  switch(serialData)
+  switch (serialData)
   {
     case 1: // speed up
-    {
-      for(int i = 0; i<4; i++)
       {
-        if(motorSpeedValue[i] < 100)
-          motorSpeedValue[i] = 100;
-        else if (motorSpeedValue[i] < 250)
-          motorSpeedValue[i] += 10;
+        if (action != "LEFT" && action != "RIGHT")
+        {
+          if (normalSpeed < MIN_TRESHOLD)
+            normalSpeed = MIN_SPEED;
+          else if (normalSpeed < MAX_TRESHOLD)
+            normalSpeed += SPEED_UNIT;
+        }
+
+        directionSpeed = normalSpeed;
+        action = "SPEED_UP";
+
+        updateVectorSpeed();
+        break;
       }
-      break;
-    }
     case 2: // speed down
-    {
-      for(int i = 0; i<4; i++)
       {
-        if (motorSpeedValue[i] > 100)
-          motorSpeedValue[i] -= 100;
-        else
-          motorSpeedValue[i] = 0;
+        action = "SPEED_DOWN";
+        for (int i = 0; i < MOTORS_NR; i++)
+        {
+          if (normalSpeed > MIN_TRESHOLD)
+            normalSpeed -= SPEED_UNIT;
+          else
+            normalSpeed = 0;
+        }
+
+        directionSpeed = normalSpeed;
+        updateVectorSpeed();
+
+        break;
       }
-      break;
-    }
     case 3: // brake
-    {
-      for(int i = 0; i<4; i++)
       {
-        GoBackWard[i] = false;
+        action = "BRAKE";
+        normalSpeed = 0;
+        for (int i = 0; i < MOTORS_NR; i++)
+        {
+          GoBackWard[i] = false;
+          motorSpeedValue[i] = normalSpeed;
+        }
+        directionSpeed = normalSpeed;
+        break;
       }
-      for(int i = 0; i<4; i++)
-      {
-        motorSpeedValue[i] = 0;
-      }
-      break;
-    }
     case 4: // turn left
-    {
-      motorSpeedValue[LEFT_FRONT_MOTOR] = 0;
-      motorSpeedValue[LEFT_BACK_MOTOR] = 0;
-            
-      if (motorSpeedValue[RIGHT_BACK_MOTOR] < 100)
       {
-        motorSpeedValue[RIGHT_BACK_MOTOR] = 100;
-        motorSpeedValue[RIGHT_FRONT_MOTOR] = motorSpeedValue[RIGHT_BACK_MOTOR];
+        motorSpeedValue[LEFT_FRONT_MOTOR] = 0;
+        motorSpeedValue[LEFT_BACK_MOTOR] = 0;
+
+        if (action != "SPEED_UP" && action != "SPEED_DOWN" && action != "RIGHT")
+        {
+          if (directionSpeed < MIN_TRESHOLD)
+          {
+            directionSpeed = MIN_SPEED;
+          }
+          else if (directionSpeed < MAX_TRESHOLD)
+          {
+            directionSpeed += SPEED_UNIT;
+          }
+          else
+          {
+            directionSpeed = MAX_SPEED;
+          }
+        }
+        
+        action = "LEFT";
+        
+        motorSpeedValue[RIGHT_FRONT_MOTOR] = directionSpeed;
+        motorSpeedValue[RIGHT_BACK_MOTOR] = directionSpeed;
+
+        break;
       }
-      else if (motorSpeedValue[RIGHT_FRONT_MOTOR] < 250)
-      {
-        motorSpeedValue[RIGHT_FRONT_MOTOR] += 10;
-        motorSpeedValue[RIGHT_BACK_MOTOR] = motorSpeedValue[RIGHT_FRONT_MOTOR];
-      }
-      else
-      {
-        motorSpeedValue[RIGHT_FRONT_MOTOR] = 255;
-        motorSpeedValue[RIGHT_BACK_MOTOR] = 255;
-      }
-      break;
-    }
     case 5: // turn right
-    {
-      motorSpeedValue[RIGHT_FRONT_MOTOR] = 0;
-      motorSpeedValue[RIGHT_BACK_MOTOR] = 0;
-      
-      if (motorSpeedValue[LEFT_FRONT_MOTOR] < 100)
       {
-        motorSpeedValue[LEFT_FRONT_MOTOR] = 100;
-        motorSpeedValue[LEFT_BACK_MOTOR] = 100;
+        motorSpeedValue[RIGHT_FRONT_MOTOR] = 0;
+        motorSpeedValue[RIGHT_BACK_MOTOR] = 0;
+
+        if (action != "SPEED_UP" && action != "SPEED_DOWN" && action != "LEFT")
+        {
+          if (directionSpeed < MIN_TRESHOLD)
+          {
+            directionSpeed = MIN_SPEED;
+          }
+          else if (directionSpeed < MAX_TRESHOLD)
+          {
+            directionSpeed += SPEED_UNIT;
+          }
+          else
+          {
+            directionSpeed = MAX_SPEED;
+          }
+        }
+
+        action = "RIGHT";
+
+        motorSpeedValue[LEFT_FRONT_MOTOR] = directionSpeed;
+        motorSpeedValue[LEFT_BACK_MOTOR] = directionSpeed;
+
+        break;
       }
-      else if (motorSpeedValue[LEFT_BACK_MOTOR] < 250)
-      {
-        motorSpeedValue[LEFT_BACK_MOTOR] += 10;
-        motorSpeedValue[LEFT_FRONT_MOTOR] = motorSpeedValue[LEFT_BACK_MOTOR];
-      }
-      else
-      {
-        motorSpeedValue[LEFT_FRONT_MOTOR] = 255;
-        motorSpeedValue[LEFT_BACK_MOTOR] = 255;
-      }
-      break;
-    }
     case 6: // go back
-    {
-      for(int i = 0; i<4; i++)
       {
-        if(motorSpeedValue[i] < 100)
-          motorSpeedValue[i] = 100;
-        GoBackWard[i] = true;
+        action = "REAR";
+        if (normalSpeed < MIN_TRESHOLD)
+        {
+          normalSpeed = MIN_SPEED;
+        }
+        for (int i = 0; i < MOTORS_NR; i++)
+        {
+          motorSpeedValue[i] = normalSpeed;
+          GoBackWard[i] = true;
+        }
       }
-    }
   }
   Serial.flush();
 }
