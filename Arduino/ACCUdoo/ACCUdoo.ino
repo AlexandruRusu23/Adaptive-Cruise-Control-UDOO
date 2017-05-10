@@ -1,7 +1,7 @@
 #define MAX_SPEED                 255
-#define MIN_SPEED                 100
+#define MIN_SPEED                 120
 #define MAX_TRESHOLD              250
-#define MIN_TRESHOLD              100
+#define MIN_TRESHOLD              120
 #define SPEED_UNIT                10
 
 const int MOTORS_IN1 =            7;
@@ -40,7 +40,7 @@ void setup()
   pinMode (MOTORS_IN2,          OUTPUT);
   pinMode (MOTORS_IN3,          OUTPUT);
   pinMode (MOTORS_IN4,          OUTPUT);
-  
+
   pinMode (RightBackMotorPin,   OUTPUT);
   pinMode (LeftBackMotorPin,    OUTPUT);
   pinMode (RightFrontMotorPin,  OUTPUT);
@@ -57,7 +57,7 @@ void loop()
     PrintCarData();
     print_timer = millis();
   }
-  
+
   analogWrite(RightBackMotorPin,    motorSpeedValue[RIGHT_BACK]);
   analogWrite(LeftBackMotorPin,     motorSpeedValue[LEFT_BACK]);
   analogWrite(RightFrontMotorPin,   motorSpeedValue[RIGHT_FRONT]);
@@ -84,7 +84,7 @@ void loop()
     digitalWrite(MOTORS_IN3, LOW);
     digitalWrite(MOTORS_IN4, HIGH);
   }
-  
+
   delay(50);
 }
 
@@ -93,10 +93,10 @@ long getSerial()
   serialData = 0;
   if (Serial.available() > 0)
   {
-    while(inByte != '/')
+    while (inByte != '/')
     {
       inByte = Serial.read();
-      if(inByte > 0 && inByte != '/')
+      if (inByte > 0 && inByte != '/')
       {
         serialData = serialData * 10 + inByte - '0';
         //Serial.println(serialData);
@@ -111,133 +111,142 @@ void PrintCarData()
 {
   Serial.println("CAR_DATA");
   Serial.print("SPEED: ");
-  Serial.println(normalSpeed);
-  Serial.print("ACTION");
+  if (action == "LEFT" || action == "RIGHT")
+    Serial.println(directionSpeed);
+  else
+    Serial.println(normalSpeed);
+  Serial.print("ACTION: ");
   Serial.println(action);
   Serial.println("END_CAR_DATA");
+  Serial.println("");
 }
 
 void updateVectorSpeed()
 {
-  for(int i = 0; i<MOTORS_NR; i++)
-    {
-      motorSpeedValue[i] = normalSpeed;
-    }
+  for (int i = 0; i < MOTORS_NR; i++)
+  {
+    motorSpeedValue[i] = normalSpeed;
+  }
 }
 
 void CommandManager()
 {
   getSerial();
-  switch(serialData)
+  switch (serialData)
   {
     case 1: // speed up
-    {
-      if (action != "LEFT" && action != "RIGHT")
       {
-        if(normalSpeed < MIN_TRESHOLD)
-          normalSpeed = MIN_SPEED;
-        else if (normalSpeed < MAX_TRESHOLD)
-          normalSpeed += SPEED_UNIT;
-      }
-      
-      action = "SPEED_UP";
+        if (action != "LEFT" && action != "RIGHT")
+        {
+          if (normalSpeed < MIN_TRESHOLD)
+            normalSpeed = MIN_SPEED;
+          else if (normalSpeed < MAX_TRESHOLD)
+            normalSpeed += SPEED_UNIT;
+        }
 
-      updateVectorSpeed();
-      break;
-    }
+        directionSpeed = normalSpeed;
+        action = "SPEED_UP";
+
+        updateVectorSpeed();
+        break;
+      }
     case 2: // speed down
-    {
-      action = "SPEED_DOWN";
-      for(int i = 0; i<MOTORS_NR; i++)
       {
-        if (normalSpeed > MIN_TRESHOLD)
-          normalSpeed -= SPEED_UNIT;
-        else
-          normalSpeed = 0;
-      }
+        action = "SPEED_DOWN";
+        for (int i = 0; i < MOTORS_NR; i++)
+        {
+          if (normalSpeed > MIN_TRESHOLD)
+            normalSpeed -= SPEED_UNIT;
+          else
+            normalSpeed = 0;
+        }
 
-      updateVectorSpeed();
-      
-      break;
-    }
+        directionSpeed = normalSpeed;
+        updateVectorSpeed();
+
+        break;
+      }
     case 3: // brake
-    {
-      action = "BRAKE";
-      normalSpeed = 0;
-      for(int i = 0; i<MOTORS_NR; i++)
       {
-        GoBackWard[i] = false;
-        motorSpeedValue[i] = normalSpeed;
+        action = "BRAKE";
+        normalSpeed = 0;
+        for (int i = 0; i < MOTORS_NR; i++)
+        {
+          GoBackWard[i] = false;
+          motorSpeedValue[i] = normalSpeed;
+        }
+        directionSpeed = normalSpeed;
+        break;
       }
-      break;
-    }
     case 4: // turn left
-    {
-      action = "LEFT";
-      motorSpeedValue[LEFT_FRONT] = 0;
-      motorSpeedValue[LEFT_BACK] = 0;
-      
-      if (directionSpeed < MIN_TRESHOLD)
       {
-        directionSpeed = MIN_SPEED;
-        directionSpeed = MIN_SPEED;
-      }
-      else if (directionSpeed < MAX_TRESHOLD)
-      {
-        directionSpeed += SPEED_UNIT;
-        directionSpeed += SPEED_UNIT;
-      }
-      else
-      {
-        directionSpeed = MAX_SPEED;
-        directionSpeed = MAX_SPEED;
-      }
+        motorSpeedValue[LEFT_FRONT] = 0;
+        motorSpeedValue[LEFT_BACK] = 0;
 
-      motorSpeedValue[RIGHT_FRONT] = directionSpeed;
-      motorSpeedValue[RIGHT_BACK] = directionSpeed;
-      
-      break;
-    }
+        if (action != "SPEED_UP" && action != "SPEED_DOWN" && action != "RIGHT")
+        {
+          if (directionSpeed < MIN_TRESHOLD)
+          {
+            directionSpeed = MIN_SPEED;
+          }
+          else if (directionSpeed < MAX_TRESHOLD)
+          {
+            directionSpeed += SPEED_UNIT;
+          }
+          else
+          {
+            directionSpeed = MAX_SPEED;
+          }
+        }
+        
+        action = "LEFT";
+        
+        motorSpeedValue[RIGHT_FRONT] = directionSpeed;
+        motorSpeedValue[RIGHT_BACK] = directionSpeed;
+
+        break;
+      }
     case 5: // turn right
-    {
-      action = "RIGHT";
-      motorSpeedValue[RIGHT_FRONT] = 0;
-      motorSpeedValue[RIGHT_BACK] = 0;
-      
-      if (directionSpeed < MIN_TRESHOLD)
       {
-        directionSpeed = MIN_SPEED;
-        directionSpeed = MIN_SPEED;
-      }
-      else if (directionSpeed < MAX_TRESHOLD)
-      {
-        directionSpeed += SPEED_UNIT;
-        directionSpeed += SPEED_UNIT;
-      }
-      else
-      {
-        directionSpeed = MAX_SPEED;
-        directionSpeed = MAX_SPEED;
-      }
+        motorSpeedValue[RIGHT_FRONT] = 0;
+        motorSpeedValue[RIGHT_BACK] = 0;
 
-       motorSpeedValue[LEFT_FRONT] = directionSpeed;
-       motorSpeedValue[LEFT_BACK] = directionSpeed;
-         
-      break;
-    }
+        if (action != "SPEED_UP" && action != "SPEED_DOWN" && action != "LEFT")
+        {
+          if (directionSpeed < MIN_TRESHOLD)
+          {
+            directionSpeed = MIN_SPEED;
+          }
+          else if (directionSpeed < MAX_TRESHOLD)
+          {
+            directionSpeed += SPEED_UNIT;
+          }
+          else
+          {
+            directionSpeed = MAX_SPEED;
+          }
+        }
+
+        action = "RIGHT";
+
+        motorSpeedValue[LEFT_FRONT] = directionSpeed;
+        motorSpeedValue[LEFT_BACK] = directionSpeed;
+
+        break;
+      }
     case 6: // go back
-    {
-      action = "REAR";
-      if(normalSpeed < MIN_TRESHOLD)
       {
-        normalSpeed = MIN_SPEED;
+        action = "REAR";
+        if (normalSpeed < MIN_TRESHOLD)
+        {
+          normalSpeed = MIN_SPEED;
+        }
+        for (int i = 0; i < MOTORS_NR; i++)
+        {
+          motorSpeedValue[i] = normalSpeed;
+          GoBackWard[i] = true;
+        }
       }
-      for(int i = 0; i<MOTORS_NR; i++)
-      {
-        motorSpeedValue[i] = normalSpeed;
-        GoBackWard[i] = true;
-      }
-    }
   }
-    Serial.flush();
+  Serial.flush();
 }
