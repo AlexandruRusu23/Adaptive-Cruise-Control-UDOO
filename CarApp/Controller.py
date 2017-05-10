@@ -3,6 +3,7 @@ Controller module
 """
 import os
 import socket
+import threading
 import SerialManager
 
 PATH_ARDUINO_BOARDS = '/dev/'
@@ -32,7 +33,7 @@ class Controller(object):
                 if current_substr in current_file:
                     self.__board_name.append(path_string + current_file)
 
-    def connect(self):
+    def __connect(self):
         """
         connect via SerialManager to Arduino Board
         """
@@ -45,19 +46,24 @@ class Controller(object):
                 self.__serial_manager = SerialManager.SerialManager(self.__board_name[0], 115200)
         else:
             print 'Controller Stoped'
-            self.stop_serial_manager()
+            self.__stop_serial_manager()
 
-    def start_serial_manager(self):
+        print 'Serial Manager connected to', self.__board_name[0]
+
+    def __start_serial_manager(self):
         """
         Start the SerialManager to read car states
         """
+        self.__connect()
         self.__serial_manager.start()
+        print 'Serial Manager reading thread has been started'
 
-    def stop_serial_manager(self):
+    def __stop_serial_manager(self):
         """
         Stop the SerialManager
         """
         self.__serial_manager.stop()
+        print 'Serial Manager thread has been stopped'
         self.__serial_manager.join()
 
     def get_car_data(self):
@@ -66,10 +72,15 @@ class Controller(object):
         """
         print self.__serial_manager.get_car_data()
 
-    def send_command(self, command_type):
+    def send_commands(self, commands_queue):
         """
         send commands to SerialManager
         """
-        commands_list = [command_type]
-        self.__serial_manager.set_controller_commands(commands_list)
-        self.__serial_manager.execute_commands()
+        current_thread = threading.current_thread()
+        self.__start_serial_manager()
+        while getattr(current_thread, 'is_running', True):
+            commands_list = [commands_queue.get(True, None)]
+            self.__serial_manager.set_controller_commands(commands_list)
+            self.__serial_manager.execute_commands()
+            commands_queue.task_done()
+        self.__stop_serial_manager()
