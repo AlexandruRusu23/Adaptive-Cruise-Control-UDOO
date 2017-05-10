@@ -12,17 +12,22 @@ class Recorder(threading.Thread):
     Recorder class - get frame from camera continously
     """
     def __init__(self):
+        # thread init
         threading.Thread.__init__(self)
+
         self.__camera = None
+
         self.__frame_encrypted = None
-        self.__frame_encrypted_lock = threading.Lock()
         self.__is_running = False
-        self.__is_running_lock = threading.Lock()
+
         self.__encode_parameter = [int(cv2.IMWRITE_JPEG_QUALITY), 60]
+
         self.__check_timer = None
 
+        self.__is_running_lock = threading.Lock()
+        self.__frame_encrypted_lock = threading.Lock()
+
     def run(self):
-        self.__check_timer = time.time()
         self.__is_running = True
         hostname = socket.gethostname()
         if 'pi' in hostname:
@@ -31,6 +36,10 @@ class Recorder(threading.Thread):
             self.__camera = cv2.VideoCapture(1)
         else: #computer
             self.__camera = cv2.VideoCapture(0)
+
+        ret = self.__camera.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
+        ret = self.__camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
+        self.__check_timer = time.time()
 
         while True:
             ret, frame = self.__camera.read()
@@ -42,6 +51,7 @@ class Recorder(threading.Thread):
                 self.__frame_encrypted_lock.acquire()
                 self.__frame_encrypted = data.tostring()
                 self.__frame_encrypted_lock.release()
+
             else:
                 break
             if time.time() - self.__check_timer > 1:
@@ -61,15 +71,6 @@ class Recorder(threading.Thread):
         self.__is_running_lock.acquire()
         self.__is_running = False
         self.__is_running_lock.release()
-
-    def get_frame(self):
-        """
-        get clean frame
-        """
-        self.__frame_lock.acquire()
-        output = self.__frame
-        self.__frame_lock.release()
-        return output
 
     def get_encrypted_frame(self):
         """
