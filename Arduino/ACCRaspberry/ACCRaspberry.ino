@@ -167,7 +167,7 @@ void CommandManager()
           motorSpeedValue[RIGHT_FRONT_MOTOR] = directionSpeed;
           motorSpeedValue[RIGHT_BACK_MOTOR] = directionSpeed;
         }
-        else
+        else if(turning = TURNING_RIGHT)
         {
           motorSpeedValue[LEFT_FRONT_MOTOR] = directionSpeed;
           motorSpeedValue[LEFT_BACK_MOTOR] = directionSpeed;
