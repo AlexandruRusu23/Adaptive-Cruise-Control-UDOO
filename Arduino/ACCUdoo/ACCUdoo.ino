@@ -15,6 +15,10 @@ const int MOTORS_IN4 =            2;
 #define LEFT_BACK                 2
 #define RIGHT_BACK                3
 
+#define TURNING_LEFT              2
+#define TURNING_RIGHT             1
+#define DISABLED                  0
+
 #define MOTORS_NR                 4
 
 const int RightFrontMotorPin  =   11;
@@ -24,6 +28,7 @@ const int LeftBackMotorPin    =   3;
 
 int normalSpeed = 0;
 int directionSpeed = 0;
+int turning;
 
 int motorSpeedValue[MOTORS_NR] = {0, 0, 0, 0};
 bool GoBackWard[MOTORS_NR] = {false, false, false, false};
@@ -111,10 +116,10 @@ void PrintCarData()
 {
   Serial.println("CAR_DATA");
   Serial.print("SPEED: ");
-  if (action == "LEFT" || action == "RIGHT")
-    Serial.println(directionSpeed);
-  else
+  if (turning == DISABLED)
     Serial.println(normalSpeed);
+  else
+    Serial.println(directionSpeed);
   Serial.print("ACTION: ");
   Serial.println(action);
   Serial.println("END_CAR_DATA");
@@ -136,6 +141,7 @@ void CommandManager()
   {
     case 1: // speed up
       {
+       turning = DISABLED;
         if (action != "LEFT" && action != "RIGHT")
         {
           if (normalSpeed < MIN_TRESHOLD)
@@ -150,24 +156,43 @@ void CommandManager()
         updateVectorSpeed();
         break;
       }
-    case 2: // speed down
+      case 2: // speed down
       {
-        action = "SPEED_DOWN";
-        for (int i = 0; i < MOTORS_NR; i++)
+        if (turning == DISABLED)
         {
           if (normalSpeed > MIN_TRESHOLD)
             normalSpeed -= SPEED_UNIT;
           else
             normalSpeed = 0;
+
+            updateVectorSpeed();
+        }
+        else
+        {
+          if (directionSpeed > MIN_TRESHOLD)
+            directionSpeed -= SPEED_UNIT;
+          else
+            directionSpeed = 0;
         }
 
-        directionSpeed = normalSpeed;
-        updateVectorSpeed();
+        if(turning = TURNING_LEFT)
+        {
+          motorSpeedValue[RIGHT_FRONT] = directionSpeed;
+          motorSpeedValue[RIGHT_BACK] = directionSpeed;
+        }
+        else
+        {
+          motorSpeedValue[LEFT_FRONT] = directionSpeed;
+          motorSpeedValue[LEFT_BACK] = directionSpeed;
+        }
+        
+        action = "SPEED_DOWN";
 
         break;
       }
     case 3: // brake
       {
+        turning = DISABLED;
         action = "BRAKE";
         normalSpeed = 0;
         for (int i = 0; i < MOTORS_NR; i++)
@@ -180,6 +205,7 @@ void CommandManager()
       }
     case 4: // turn left
       {
+        turning = TURNING_LEFT;
         motorSpeedValue[LEFT_FRONT] = 0;
         motorSpeedValue[LEFT_BACK] = 0;
 
@@ -208,6 +234,7 @@ void CommandManager()
       }
     case 5: // turn right
       {
+        turning = TURNING_RIGHT;
         motorSpeedValue[RIGHT_FRONT] = 0;
         motorSpeedValue[RIGHT_BACK] = 0;
 
@@ -236,6 +263,7 @@ void CommandManager()
       }
     case 6: // go back
       {
+        turning = DISABLED;
         action = "REAR";
         if (normalSpeed < MIN_TRESHOLD)
         {
