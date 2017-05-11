@@ -11,7 +11,7 @@ class StreamerServer(object):
     """
     def __init__(self, host, port=8089):
         self.__socket = None
-        self.__server_adress = (host, port)
+        self.__server_address = (host, port)
         self.__connection = None
 
     def stream(self, analysed_frame_queue):
@@ -20,12 +20,11 @@ class StreamerServer(object):
         """
         current_thread = threading.currentThread()
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.__socket.bind(self.__server_adress)
+        self.__socket.bind(self.__server_address)
         # We want only one client
         self.__socket.listen(1)
         while getattr(current_thread, 'is_running', True):
-            print >>sys.stderr, 'waiting for a connection'
-            print self.__server_adress
+            print >>sys.stderr, 'waiting for a connection', self.__server_address
             self.__connection, client_address = self.__socket.accept()
             try:
                 print >>sys.stderr, 'connection from', client_address

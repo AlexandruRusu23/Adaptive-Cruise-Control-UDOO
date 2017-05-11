@@ -3,6 +3,7 @@ User Comunicator Server module
 """
 import threading
 import socket
+import sys
 
 class UserComunicatorServer(object):
     """
@@ -24,6 +25,7 @@ class UserComunicatorServer(object):
         self.__socket.listen(1)
         # Listen to infinite connection if Client disconnect
         while getattr(current_thread, 'is_running', True):
+            print >>sys.stderr, 'waiting for a connection', self.__server_address
             self.__connection, client_address = self.__socket.accept()
             print 'connection from', client_address
             try:
