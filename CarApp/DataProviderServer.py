@@ -1,22 +1,22 @@
 """
-Streamer Server module
+Data Provider Server module
 """
+import sys
 import threading
 import socket
-import sys
 
-class StreamerServer(object):
+class DataProviderServer(object):
     """
-    streamer server class
+    data provider server class
     """
-    def __init__(self, host, port=8089):
+    def __init__(self, host, port=18089):
         self.__socket = None
         self.__server_adress = (host, port)
         self.__connection = None
 
-    def stream(self, analysed_frame_queue):
+    def provide(self, car_data_queue):
         """
-        stream the current analysed frame if a connection has been established
+        provide the remote app with car data if a connection has been established
         """
         current_thread = threading.currentThread()
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -30,10 +30,10 @@ class StreamerServer(object):
             try:
                 print >>sys.stderr, 'connection from', client_address
                 while getattr(current_thread, 'is_connected', True):
-                    frame = analysed_frame_queue.get(True, None)
-                    self.__connection.send(str(len(frame)).ljust(4096))
-                    self.__connection.send(frame)
-                    analysed_frame_queue.task_done()
+                    states = car_data_queue.get(True, None)
+                    self.__connection.send(str(len(states)).ljust(1024))
+                    self.__connection.send(states)
+                    car_data_queue.task_done()
                 current_thread.is_connected = True
             finally:
                 self.__connection.close()

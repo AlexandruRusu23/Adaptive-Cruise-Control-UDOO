@@ -6,6 +6,7 @@ import cv2
 from PyQt4 import QtCore, QtGui
 import ControllerClient
 import StreamerClient
+import DataProviderClient
 
 SPEED_UP_ACTION = "Speed increased"
 SPEED_DOWN_ACTION = "Speed decreased"
@@ -71,6 +72,7 @@ class RemoteMain(object):
         """
         self.__controller = ControllerClient.ControllerClient()
         self.__streamer = StreamerClient.StreamerClient()
+        self.__data_provider = DataProviderClient.DataProviderClient()
         self.__streamer_image_thread = None
 
         self.window_width = None
@@ -202,6 +204,7 @@ class RemoteMain(object):
 
         self.__streamer.start()
         self.__controller.start()
+        self.__data_provider.start()
 
         self.retranslate_ui(main_window)
         QtCore.QMetaObject.connectSlotsByName(main_window)
@@ -292,6 +295,16 @@ class RemoteMain(object):
             bpl = bpc * width
             image = QtGui.QImage(cv_image.data, width, height, bpl, QtGui.QImage.Format_RGB888)
             self.streamer_image_view.set_image(image)
+
+        car_data = self.__data_provider.get_car_data()
+        car_data = car_data.split(';')
+        for elem in car_data:
+            current_state = elem.split(',')
+            if len(current_state[0]) > 1:
+                if current_state[0] == 'ACTION':
+                    self.__car_action = current_state[1]
+                elif current_state[0] == 'SPEED':
+                    self.__car_speed = current_state[1]
 
         self.speed_text.setText(_translate("main_window", str(self.__car_speed), None))
         self.command_text.setText(_translate("main_window", self.__car_action, None))

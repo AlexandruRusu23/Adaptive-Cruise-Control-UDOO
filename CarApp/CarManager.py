@@ -10,13 +10,14 @@ import Controller
 import Analyser
 import StreamServer
 import UserComunicatorServer
-import time
+import DataProviderServer
 
 FRAME_QUEUE = Queue.Queue(1)
 COMMANDS_QUEUE = Queue.Queue(1)
 AUTONOMOUS_STATES_QUEUE = Queue.Queue(1)
 ANALYSED_FRAME_QUEUE = Queue.Queue(1)
 USER_COMMANDS_QUEUE = Queue.Queue(1)
+CAR_DATA_QUEUE = Queue.Queue(1)
 
 class CarManager(threading.Thread):
     """
@@ -29,15 +30,18 @@ class CarManager(threading.Thread):
         self.__analyser = None
         self.__streamer = None
         self.__user_comunicator = None
+        self.__data_provider_server = None
 
         # threads
         self.__controller_thread = None
+        self.__car_data_thread = None
         self.__recorder_thread = None
         self.__analyser_thread = None
         self.__streamer_thread = None
         self.__user_comunicator_thread = None
         self.__rights_thread = None
         self.__process_user_commands_thread = None
+        self.__data_provider_thread = None
 
         #string containing user rights about controlling the car
         self.__autonomous_rights = None
@@ -48,6 +52,7 @@ class CarManager(threading.Thread):
         self.__analyser = Analyser.Analyser()
         self.__user_comunicator = UserComunicatorServer.UserComunicatorServer(self.get_ip_address())
         self.__streamer = StreamServer.StreamerServer(self.get_ip_address())
+        self.__data_provider_server = DataProviderServer.DataProviderServer(self.get_ip_address())
 
         # control car motors thread
         self.__controller_thread = \
@@ -55,6 +60,13 @@ class CarManager(threading.Thread):
             args=(self.__controller, COMMANDS_QUEUE))
         self.__controller_thread.setDaemon(True)
         self.__controller_thread.start()
+
+        # get car data thread
+        self.__car_data_thread = \
+            threading.Thread(target=Controller.Controller.get_car_data, \
+            args=(self.__controller, CAR_DATA_QUEUE))
+        self.__car_data_thread.setDaemon(True)
+        self.__car_data_thread.start()
 
         # video capture thread
         self.__recorder_thread = \
@@ -84,6 +96,13 @@ class CarManager(threading.Thread):
         self.__user_comunicator_thread.setDaemon(True)
         self.__user_comunicator_thread.start()
 
+        # data provider server thread
+        self.__data_provider_thread = \
+            threading.Thread(target=self.__data_provider_server.provide, \
+            args=(CAR_DATA_QUEUE,))
+        self.__data_provider_thread.setDaemon(True)
+        self.__data_provider_thread.start()
+
         # update user rights thread
         self.__rights_thread = \
             threading.Thread(target=self.__update_user_rights, \
@@ -104,6 +123,7 @@ class CarManager(threading.Thread):
         """
         # send stop event
         self.__controller_thread.is_running = False
+        self.__car_data_thread.is_running = False
         self.__recorder_thread.is_running = False
         self.__analyser_thread.is_running = False
         self.__rights_thread.is_running = False
@@ -115,6 +135,7 @@ class CarManager(threading.Thread):
 
         # join
         self.__controller_thread.join()
+        self.__car_data_thread.join()
         self.__recorder_thread.join()
         self.__analyser_thread.join()
         self.__rights_thread.join()
@@ -142,9 +163,3 @@ class CarManager(threading.Thread):
             command = user_commands_queue.get(True, None)
             commands_queue.put(command, True, None)
             user_commands_queue.task_done()
-
-# if __name__ == '__main__':
-#     AUX = CarManager()
-#     AUX.start()
-#     time.sleep(10)
-#     AUX.stop()
