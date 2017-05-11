@@ -1,3 +1,0 @@
-"""
-User Control Server module
-"""

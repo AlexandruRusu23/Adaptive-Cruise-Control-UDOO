@@ -44,6 +44,8 @@ class Controller(object):
                 self.__serial_manager = SerialManager.SerialManager(self.__board_name[0], 9600)
             elif 'udoo' in hostname:
                 self.__serial_manager = SerialManager.SerialManager(self.__board_name[0], 115200)
+            else: #computer
+                self.__serial_manager = SerialManager.SerialManager(self.__board_name[0], 9600)
         else:
             print 'Controller Stoped'
             self.__stop_serial_manager()
@@ -76,7 +78,7 @@ class Controller(object):
         """
         send commands to SerialManager
         """
-        current_thread = threading.current_thread()
+        current_thread = threading.currentThread()
         self.__start_serial_manager()
         while getattr(current_thread, 'is_running', True):
             commands_list = [commands_queue.get(True, None)]

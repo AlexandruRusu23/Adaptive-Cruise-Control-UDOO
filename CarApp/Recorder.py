@@ -29,7 +29,7 @@ class Recorder(object):
         ret = self.__camera.set(cv2.CAP_PROP_FRAME_WIDTH, 320)
         ret = self.__camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)
 
-        current_thread = threading.current_thread()
+        current_thread = threading.currentThread()
         while getattr(current_thread, 'is_running', True):
             ret, frame = self.__camera.read()
             if bool(ret) is True:
@@ -37,7 +37,7 @@ class Recorder(object):
                 if bool(result) is False:
                     break
                 data = numpy.array(encrypted_image)
-                frame_queue.put(data.tostring())
+                frame_queue.put(data.tostring(), True, None)
             else:
                 break
 

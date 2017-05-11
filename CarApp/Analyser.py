@@ -18,12 +18,16 @@ class Analyser(object):
         """
         get the current frame from FRAME_QUEUE of CarManager and analyse
         """
-        current_thread = threading.current_thread()
+        current_thread = threading.currentThread()
         while getattr(current_thread, 'is_running', True):
             string_data = frame_queue.get(True, None)
             #data = numpy.fromstring(string_data, dtype='uint8')
             #self.__current_frame = cv2.imdecode(data, 1)
             frame_queue.task_done()
+
+            # analysed_frame_queue.get()
+            # analysed_frame_queue.task_done()
+
             analysed_frame_queue.put(string_data)
             #autonomous_states_queue.put()
             #commands_queue.put()
