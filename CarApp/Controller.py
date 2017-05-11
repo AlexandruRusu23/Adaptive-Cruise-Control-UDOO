@@ -20,6 +20,9 @@ class Controller(object):
         self.__serial_manager = None
         self.__board_name = []
 
+        self.__serial_connected = False
+        self.__serial_connected_lock = threading.Lock()
+
     def __find_board(self):
         """
         Find the arduino file
@@ -51,6 +54,7 @@ class Controller(object):
             self.__stop_serial_manager()
 
         print 'Serial Manager connected to', self.__board_name[0]
+        self.__serial_connected = True
 
     def __start_serial_manager(self):
         """
@@ -68,21 +72,45 @@ class Controller(object):
         print 'Serial Manager thread has been stopped'
         self.__serial_manager.join()
 
-    def get_car_data(self):
+    def get_car_data(self, car_data_queue):
         """
         get the dictionary with car states from SerialManager
         """
-        print self.__serial_manager.get_car_data()
+        current_thread = threading.currentThread()
+        self.__serial_connected_lock.acquire()
+        if self.__serial_connected is False:
+            self.__start_serial_manager()
+            self.__serial_connected = True
+        self.__serial_connected_lock.release()
+
+        while getattr(current_thread, 'is_running', True):
+            car_data_queue.put(self.__serial_manager.get_car_data(), True, None)
+
+        self.__serial_connected_lock.acquire()
+        if self.__serial_connected is True:
+            self.__stop_serial_manager()
+            self.__serial_connected = False
+        self.__serial_connected_lock.release()
 
     def send_commands(self, commands_queue):
         """
         send commands to SerialManager
         """
         current_thread = threading.currentThread()
-        self.__start_serial_manager()
+        self.__serial_connected_lock.acquire()
+        if self.__serial_connected is False:
+            self.__start_serial_manager()
+            self.__serial_connected = True
+        self.__serial_connected_lock.release()
+
         while getattr(current_thread, 'is_running', True):
             commands_list = [commands_queue.get(True, None)]
             self.__serial_manager.set_controller_commands(commands_list)
             self.__serial_manager.execute_commands()
             commands_queue.task_done()
-        self.__stop_serial_manager()
+
+        self.__serial_connected_lock.acquire()
+        if self.__serial_connected is True:
+            self.__stop_serial_manager()
+            self.__serial_connected = False
+        self.__serial_connected_lock.release()

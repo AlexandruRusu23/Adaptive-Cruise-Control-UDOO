@@ -112,9 +112,12 @@ class SerialManager(threading.Thread):
 
     def get_car_data(self):
         """
-        get the dictionary with car states
+        get the dictionary as a string with car states
         """
         self.__dict_lock.acquire()
-        output = self.__dict_scanner_data
+        output_dict = self.__dict_scanner_data
         self.__dict_lock.release()
+        output = ''
+        for key, value in output_dict.items():
+            output = output + str(key) + ',' + str(value) + ';'
         return output
