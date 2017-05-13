@@ -297,14 +297,15 @@ class RemoteMain(object):
             self.streamer_image_view.set_image(image)
 
         car_data = self.__data_provider.get_car_data()
-        car_data = car_data.split(';')
-        for elem in car_data:
-            current_state = elem.split(',')
-            if len(current_state[0]) > 1:
-                if current_state[0] == 'ACTION':
-                    self.__car_action = current_state[1]
-                elif current_state[0] == 'SPEED':
-                    self.__car_speed = current_state[1]
+        if car_data is not None:
+            car_data = car_data.split(';')
+            for elem in car_data:
+                current_state = elem.split(',')
+                if len(current_state[0]) > 1:
+                    if current_state[0] == 'ACTION':
+                        self.__car_action = current_state[1]
+                    elif current_state[0] == 'SPEED':
+                        self.__car_speed = current_state[1]
 
         self.speed_text.setText(_translate("main_window", str(self.__car_speed), None))
         self.command_text.setText(_translate("main_window", self.__car_action, None))

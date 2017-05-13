@@ -84,7 +84,7 @@ class Controller(object):
         self.__serial_connected_lock.release()
 
         while getattr(current_thread, 'is_running', True):
-            car_data_queue.put(self.__serial_manager.get_car_data(), True, None)
+            car_data_queue.put(self.__serial_manager.get_car_data())
 
         self.__serial_connected_lock.acquire()
         if self.__serial_connected is True:
