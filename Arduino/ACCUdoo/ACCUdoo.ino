@@ -164,8 +164,6 @@ void CommandManager()
             normalSpeed -= SPEED_UNIT;
           else
             normalSpeed = 0;
-
-            updateVectorSpeed();
         }
         else
         {
@@ -175,15 +173,19 @@ void CommandManager()
             directionSpeed = 0;
         }
 
-        if(turning = TURNING_LEFT)
+        if(turning == TURNING_LEFT)
         {
           motorSpeedValue[RIGHT_FRONT] = directionSpeed;
           motorSpeedValue[RIGHT_BACK] = directionSpeed;
         }
-        else if(turning = TURNING_RIGHT)
+        else if(turning == TURNING_RIGHT)
         {
           motorSpeedValue[LEFT_FRONT] = directionSpeed;
           motorSpeedValue[LEFT_BACK] = directionSpeed;
+        }
+        else
+        {
+          updateVectorSpeed();
         }
         
         action = "SPEED_DOWN";

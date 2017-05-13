@@ -22,7 +22,6 @@ const int MOTORS_IN4 =            2;
 
 #define MOTORS_NR                 4
 
-
 AF_DCMotor rightBackMotor(2, MOTOR12_64KHZ);
 AF_DCMotor leftBackMotor(1, MOTOR12_64KHZ);
 AF_DCMotor leftFrontMotor(4, MOTOR12_64KHZ);
@@ -128,8 +127,7 @@ void CommandManager()
   {
     case 1: // speed up
       {
-        turning = DISABLED;
-        if (action != "LEFT" && action != "RIGHT")
+        if(turning == DISABLED)
         {
           if (normalSpeed < MIN_TRESHOLD)
             normalSpeed = MIN_SPEED;
@@ -138,6 +136,7 @@ void CommandManager()
         }
 
         directionSpeed = normalSpeed;
+        turning = DISABLED;
         action = "SPEED_UP";
 
         updateVectorSpeed();
@@ -150,9 +149,7 @@ void CommandManager()
           if (normalSpeed > MIN_TRESHOLD)
             normalSpeed -= SPEED_UNIT;
           else
-            normalSpeed = 0;
-
-            updateVectorSpeed();
+            normalSpeed = 0;       
         }
         else
         {
@@ -162,15 +159,19 @@ void CommandManager()
             directionSpeed = 0;
         }
 
-        if(turning = TURNING_LEFT)
+        if(turning == TURNING_LEFT)
         {
           motorSpeedValue[RIGHT_FRONT_MOTOR] = directionSpeed;
           motorSpeedValue[RIGHT_BACK_MOTOR] = directionSpeed;
         }
-        else if(turning = TURNING_RIGHT)
+        else if(turning == TURNING_RIGHT)
         {
           motorSpeedValue[LEFT_FRONT_MOTOR] = directionSpeed;
           motorSpeedValue[LEFT_BACK_MOTOR] = directionSpeed;
+        }
+        else
+        {
+          updateVectorSpeed();
         }
         
         action = "SPEED_DOWN";
