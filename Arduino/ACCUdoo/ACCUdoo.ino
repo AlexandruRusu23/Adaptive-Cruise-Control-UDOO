@@ -48,11 +48,6 @@ void setup()
 void loop()
 {
   CommandManager();
-  if (millis() - print_timer > 500)
-  {
-    PrintCarData();
-    print_timer = millis();
-  }
 
   rightBackMotor->setSpeed(motorSpeedValue[RIGHT_BACK]);
   leftBackMotor->setSpeed(motorSpeedValue[LEFT_BACK]);
@@ -94,20 +89,6 @@ long getSerial()
     inByte = 0;
   }
   return serialData;
-}
-
-void PrintCarData()
-{
-  Serial.println("CAR_DATA");
-  Serial.print("SPEED: ");
-  if (turning == DISABLED)
-    Serial.println(normalSpeed);
-  else
-    Serial.println(directionSpeed);
-  Serial.print("ACTION: ");
-  Serial.println(action);
-  Serial.println("END_CAR_DATA");
-  Serial.println("");
 }
 
 void updateVectorSpeed()
