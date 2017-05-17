@@ -43,7 +43,7 @@ class SerialManager(threading.Thread):
         self.__serial_lock.release()
 
         while True:
-            self.__reader()
+            #self.__reader()
             if time.time() - self.__check_timer > 1:
                 self.__running_lock.acquire()
                 condition = self.__is_running

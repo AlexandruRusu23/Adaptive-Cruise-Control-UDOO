@@ -9,7 +9,7 @@ class ControllerClient(threading.Thread):
     """
     Controller Client Class
     """
-    def __init__(self, hostname='192.168.0.59', port=32656):
+    def __init__(self, hostname='192.168.0.106', port=32656):
         threading.Thread.__init__(self)
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.__server_address = (hostname, port)

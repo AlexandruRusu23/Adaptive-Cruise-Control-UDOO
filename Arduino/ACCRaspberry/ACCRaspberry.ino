@@ -22,10 +22,10 @@ const int MOTORS_IN4 =            2;
 
 #define MOTORS_NR                 4
 
-AF_DCMotor rightBackMotor(2, MOTOR12_64KHZ);
-AF_DCMotor leftBackMotor(1, MOTOR12_64KHZ);
-AF_DCMotor leftFrontMotor(4, MOTOR12_64KHZ);
-AF_DCMotor rightFrontMotor(3, MOTOR12_64KHZ);
+AF_DCMotor rightBackMotor(2); 
+AF_DCMotor leftBackMotor(1);
+AF_DCMotor leftFrontMotor(4);
+AF_DCMotor rightFrontMotor(3);
 
 int motorSpeedValue[4] = {0, 0, 0, 0};
 bool GoBackWard[4] = {false, false, false, false};

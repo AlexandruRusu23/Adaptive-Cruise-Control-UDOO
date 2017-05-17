@@ -1,13 +1,12 @@
+#include <Wire.h>
+#include <Adafruit_MotorShield.h>
+#include "utility/Adafruit_MS_PWMServoDriver.h"
+
 #define MAX_SPEED                 255
 #define MIN_SPEED                 120
 #define MAX_TRESHOLD              250
 #define MIN_TRESHOLD              120
 #define SPEED_UNIT                10
-
-const int MOTORS_IN1 =            7;
-const int MOTORS_IN2 =            6;
-const int MOTORS_IN3 =            4;
-const int MOTORS_IN4 =            2;
 
 // motors indices in vector of speeds
 #define LEFT_FRONT                0
@@ -21,17 +20,18 @@ const int MOTORS_IN4 =            2;
 
 #define MOTORS_NR                 4
 
-const int RightFrontMotorPin  =   11;
-const int LeftFrontMotorPin   =   10;
-const int RightBackMotorPin   =   5;
-const int LeftBackMotorPin    =   3;
+Adafruit_MotorShield AFMS = Adafruit_MotorShield(); 
+Adafruit_DCMotor *leftBackMotor = AFMS.getMotor(1);
+Adafruit_DCMotor *rightBackMotor = AFMS.getMotor(2);
+Adafruit_DCMotor *rightFrontMotor = AFMS.getMotor(3);
+Adafruit_DCMotor *leftFrontMotor = AFMS.getMotor(4);
 
 int normalSpeed = 0;
 int directionSpeed = 0;
 int turning;
 
 int motorSpeedValue[MOTORS_NR] = {0, 0, 0, 0};
-bool GoBackWard[MOTORS_NR] = {false, false, false, false};
+bool GoBackWard = false;
 
 unsigned long print_timer = 0;
 
@@ -41,16 +41,7 @@ String action;
 
 void setup()
 {
-  pinMode (MOTORS_IN1,          OUTPUT);
-  pinMode (MOTORS_IN2,          OUTPUT);
-  pinMode (MOTORS_IN3,          OUTPUT);
-  pinMode (MOTORS_IN4,          OUTPUT);
-
-  pinMode (RightBackMotorPin,   OUTPUT);
-  pinMode (LeftBackMotorPin,    OUTPUT);
-  pinMode (RightFrontMotorPin,  OUTPUT);
-  pinMode (LeftFrontMotorPin,   OUTPUT);
-
+  AFMS.begin();
   Serial.begin(115200);
 }
 
@@ -63,31 +54,24 @@ void loop()
     print_timer = millis();
   }
 
-  analogWrite(RightBackMotorPin,    motorSpeedValue[RIGHT_BACK]);
-  analogWrite(LeftBackMotorPin,     motorSpeedValue[LEFT_BACK]);
-  analogWrite(RightFrontMotorPin,   motorSpeedValue[RIGHT_FRONT]);
-  analogWrite(LeftFrontMotorPin,    motorSpeedValue[LEFT_FRONT]);
+  rightBackMotor->setSpeed(motorSpeedValue[RIGHT_BACK]);
+  leftBackMotor->setSpeed(motorSpeedValue[LEFT_BACK]);
+  rightFrontMotor->setSpeed(motorSpeedValue[RIGHT_FRONT]);
+  leftFrontMotor->setSpeed(motorSpeedValue[LEFT_FRONT]);
 
-  if (GoBackWard[0] == false)
+  if (GoBackWard == false)
   {
-    digitalWrite(MOTORS_IN1, HIGH);
-    digitalWrite(MOTORS_IN2, LOW);
+    rightBackMotor->run(FORWARD);
+    leftBackMotor->run(FORWARD);
+    rightFrontMotor->run(FORWARD);
+    leftFrontMotor->run(FORWARD);
   }
   else
   {
-    digitalWrite(MOTORS_IN1, LOW);
-    digitalWrite(MOTORS_IN2, HIGH);
-  }
-
-  if (GoBackWard[1] == false)
-  {
-    digitalWrite(MOTORS_IN3, HIGH);
-    digitalWrite(MOTORS_IN4, LOW);
-  }
-  else
-  {
-    digitalWrite(MOTORS_IN3, LOW);
-    digitalWrite(MOTORS_IN4, HIGH);
+    rightBackMotor->run(BACKWARD);
+    leftBackMotor->run(BACKWARD);
+    rightFrontMotor->run(BACKWARD);
+    leftFrontMotor->run(BACKWARD);
   }
 
   delay(50);
@@ -197,9 +181,9 @@ void CommandManager()
         turning = DISABLED;
         action = "BRAKE";
         normalSpeed = 0;
+        GoBackWard = false;
         for (int i = 0; i < MOTORS_NR; i++)
         {
-          GoBackWard[i] = false;
           motorSpeedValue[i] = normalSpeed;
         }
         directionSpeed = normalSpeed;
@@ -271,10 +255,10 @@ void CommandManager()
         {
           normalSpeed = MIN_SPEED;
         }
+        GoBackWard = true;
         for (int i = 0; i < MOTORS_NR; i++)
         {
           motorSpeedValue[i] = normalSpeed;
-          GoBackWard[i] = true;
         }
       }
   }
