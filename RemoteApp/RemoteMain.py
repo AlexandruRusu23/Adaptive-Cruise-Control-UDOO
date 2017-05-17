@@ -298,9 +298,9 @@ class RemoteMain(object):
 
         car_data = self.__data_provider.get_car_data()
         if car_data is not None:
-            car_data = car_data.split(':')
+            car_data = car_data.split(';')
             for elem in car_data:
-                current_state = elem.split(';')
+                current_state = elem.split(',')
                 if len(current_state[0]) > 1:
                     if current_state[0] == 'ACTION':
                         self.__car_action = current_state[1]
