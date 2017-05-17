@@ -34,7 +34,6 @@ class CarManager(threading.Thread):
 
         # threads
         self.__controller_thread = None
-        self.__car_data_thread = None
         self.__recorder_thread = None
         self.__analyser_thread = None
         self.__streamer_thread = None
@@ -60,13 +59,6 @@ class CarManager(threading.Thread):
             args=(self.__controller, COMMANDS_QUEUE))
         self.__controller_thread.setDaemon(True)
         self.__controller_thread.start()
-
-        # get car data thread
-        self.__car_data_thread = \
-            threading.Thread(target=Controller.Controller.get_car_data, \
-            args=(self.__controller, CAR_DATA_QUEUE))
-        self.__car_data_thread.setDaemon(True)
-        self.__car_data_thread.start()
 
         # video capture thread
         self.__recorder_thread = \
@@ -113,7 +105,7 @@ class CarManager(threading.Thread):
         # user commands thread
         self.__process_user_commands_thread = \
             threading.Thread(target=self.__process_user_commands, \
-            args=(USER_COMMANDS_QUEUE, COMMANDS_QUEUE,))
+            args=(USER_COMMANDS_QUEUE, COMMANDS_QUEUE, CAR_DATA_QUEUE,))
         self.__process_user_commands_thread.setDaemon(True)
         self.__process_user_commands_thread.start()
 
@@ -157,9 +149,35 @@ class CarManager(threading.Thread):
             autonomous_states_queue.get(True, None)
             autonomous_states_queue.task_done()
 
-    def __process_user_commands(self, user_commands_queue, commands_queue):
+    def __process_user_commands(self, user_commands_queue, commands_queue, car_data_queue):
         current_thread = threading.currentThread()
+        car_speed_value = 0
         while getattr(current_thread, 'is_running', True):
             command = user_commands_queue.get(True, None)
+            car_data_string = ''
+            if command == '1/':
+                car_speed_value = car_speed_value + 10
+                car_data_string = car_data_string + \
+                    'ACTION:SPEED_UP;SPEED:' + str(car_speed_value) + ';'
+            elif command == '2/':
+                car_speed_value = car_speed_value - 10
+                car_data_string = car_data_string + \
+                    'ACTION:SPEED_DOWN;SPEED:' + str(car_speed_value) + ';'
+            elif command == '3/':
+                car_speed_value = 0
+                car_data_string = car_data_string + \
+                    'ACTION:BRAKE;SPEED:' + str(car_speed_value) + ';'
+            elif command == '4/':
+                car_data_string = car_data_string + \
+                    'ACTION:LEFT;SPEED:' + str(car_speed_value) + ';'
+            elif command == '5/':
+                car_data_string = car_data_string + \
+                    'ACTION:RIGHT;SPEED:' + str(car_speed_value) + ';'
+            elif command == '6/':
+                if car_speed_value == 0:
+                    car_speed_value = 120
+                car_data_string = car_data_string + \
+                    'ACTION:REAR;SPEED:' + str(car_speed_value) + ';'
             commands_queue.put(command, True, None)
+            car_data_queue.put(car_data_string, True, None)
             user_commands_queue.task_done()
