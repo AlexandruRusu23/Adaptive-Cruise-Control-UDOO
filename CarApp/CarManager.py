@@ -115,6 +115,7 @@ class CarManager(threading.Thread):
         """
         # send stop event
         self.__controller_thread.is_running = False
+        self.__car_data_thread.is_running = False
         self.__recorder_thread.is_running = False
         self.__analyser_thread.is_running = False
         self.__rights_thread.is_running = False
@@ -126,6 +127,7 @@ class CarManager(threading.Thread):
 
         # join
         self.__controller_thread.join()
+        self.__car_data_thread.join()
         self.__recorder_thread.join()
         self.__analyser_thread.join()
         self.__rights_thread.join()
@@ -154,17 +156,11 @@ class CarManager(threading.Thread):
             command = user_commands_queue.get(True, None)
             car_data_string = ''
             if command == '1/':
-                if car_speed_value == 0:
-                    car_speed_value = 120
-                else:
-                    car_speed_value = car_speed_value + 10
+                car_speed_value = car_speed_value + 10
                 car_data_string = car_data_string + \
                     'ACTION:SPEED_UP;SPEED:' + str(car_speed_value) + ';'
             elif command == '2/':
-                if car_speed_value > 120:
-                    car_speed_value = car_speed_value - 10
-                else:
-                    car_speed_value = 0
+                car_speed_value = car_speed_value - 10
                 car_data_string = car_data_string + \
                     'ACTION:SPEED_DOWN;SPEED:' + str(car_speed_value) + ';'
             elif command == '3/':
