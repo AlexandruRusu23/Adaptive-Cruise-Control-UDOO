@@ -301,7 +301,7 @@ class RemoteMain(object):
             car_data = car_data.split(':')
             for elem in car_data:
                 current_state = elem.split(';')
-                if len(current_state) > 1:
+                if len(current_state[0]) > 1:
                     if current_state[0] == 'ACTION':
                         self.__car_action = current_state[1]
                     elif current_state[0] == 'SPEED':
