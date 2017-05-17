@@ -21,6 +21,7 @@ class Analyser(object):
     """
     def __init__(self):
         self.__current_frame = None
+        self.__encode_parameter = [int(cv2.IMWRITE_JPEG_QUALITY), 60]
 
     def analyse(self, frame_queue, autonomous_states_queue, commands_queue, analysed_frame_queue):
         """
