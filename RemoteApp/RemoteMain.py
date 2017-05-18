@@ -228,12 +228,10 @@ class RemoteMain(object):
 
     def __speed_up_button_clicked(self):
         self.__car_action = SPEED_UP_ACTION
-        self.__increase_car_speed()
         self.__send_command('SPEED_UP')
 
     def __speed_down_button_clicked(self):
         self.__car_action = SPEED_DOWN_ACTION
-        self.__decrease_car_speed()
         self.__send_command('SPEED_DOWN')
 
     def __brake_button_clicked(self):
@@ -256,24 +254,14 @@ class RemoteMain(object):
         key = event.key()
         if chr(key) == 'W':
             self.__controller.execute_command('SPEED_UP')
-            self.__increase_car_speed()
-            self.__car_action = SPEED_UP_ACTION
         elif chr(key) == 'A':
             self.__controller.execute_command('GO_LEFT')
-            self.__increase_car_speed()
-            self.__car_action = GO_TO_LEFT_ACTION
         elif chr(key) == 'S':
             self.__controller.execute_command('SPEED_DOWN')
-            self.__decrease_car_speed()
-            self.__car_action = SPEED_DOWN_ACTION
         elif chr(key) == 'D':
             self.__controller.execute_command('GO_RIGHT')
-            self.__increase_car_speed()
-            self.__car_action = GO_TO_RIGHT_ACTION
         elif chr(key) == 'M':
             self.__controller.execute_command('BRAKE')
-            self.__car_speed = 0
-            self.__car_action = BRAKE_ACTION
         elif chr(key) == 'R':
             self.__controller.execute_command('REAR')
 
@@ -301,7 +289,7 @@ class RemoteMain(object):
             car_data = car_data.split(';')
             for elem in car_data:
                 current_state = elem.split(',')
-                if len(current_state[0]) > 1:
+                if len(current_state) > 1:
                     if current_state[0] == 'ACTION':
                         self.__car_action = current_state[1]
                     elif current_state[0] == 'SPEED':
@@ -315,26 +303,13 @@ class RemoteMain(object):
         close event
         """
         print event
+        self.__controller.execute_command('CLOSE')
         self.__streamer.stop()
         self.__controller.stop()
         self.__streamer.join()
+        print 'Streamer thread closed'
         self.__controller.join()
-
-    def __increase_car_speed(self):
-        if self.__car_speed < 100:
-            self.__car_speed = 100
-        elif self.__car_speed < 250:
-            self.__car_speed = self.__car_speed + 10
-        else:
-            self.__car_speed = 255
-
-    def __decrease_car_speed(self):
-        if self.__car_speed == 255:
-            self.__car_speed = 250
-        elif self.__car_speed > 100:
-            self.__car_speed = self.__car_speed - 10
-        else:
-            self.__car_speed = 0
+        print 'Controller thread closed'
 
 if __name__ == "__main__":
     MAIN_APP = QtGui.QApplication(sys.argv)

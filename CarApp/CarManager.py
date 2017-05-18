@@ -161,5 +161,7 @@ class CarManager(threading.Thread):
         current_thread = threading.currentThread()
         while getattr(current_thread, 'is_running', True):
             command = user_commands_queue.get(True, None)
+            if str(command) == 'CLOSE':
+                self.stop()
             commands_queue.put(command, True, None)
             user_commands_queue.task_done()

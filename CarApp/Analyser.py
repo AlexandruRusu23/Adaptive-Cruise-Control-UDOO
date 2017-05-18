@@ -37,10 +37,11 @@ class Analyser(object):
             # analysed_frame_queue.put(, True, None)
             # analysed_frame_queue.task_done()
 
-            result, encrypted_image = cv2.imencode('.jpg', frame, self.__encode_parameter)
+            result, encrypted_image = \
+                cv2.imencode('.jpg', self.__current_frame, self.__encode_parameter)
             if bool(result) is False:
                 break
             data = numpy.array(encrypted_image)
-            analysed_frame_queue.put(data.to_string())
+            analysed_frame_queue.put(data.tostring())
             #autonomous_states_queue.put()
             #commands_queue.put()

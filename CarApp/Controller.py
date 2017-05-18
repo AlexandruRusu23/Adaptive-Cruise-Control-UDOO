@@ -69,8 +69,8 @@ class Controller(object):
         Stop the SerialManager
         """
         self.__serial_manager.stop()
-        print 'Serial Manager thread has been stopped'
         self.__serial_manager.join()
+        print 'Serial Manager thread has been stopped'
 
     def get_car_data(self, car_data_queue):
         """
