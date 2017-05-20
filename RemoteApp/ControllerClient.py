@@ -66,3 +66,5 @@ class ControllerClient(threading.Thread):
             self.__command_list.append('3/')
         elif command_type == 'REAR':
             self.__command_list.append('6/')
+        else:
+            self.__command_list.append(str(command_type))

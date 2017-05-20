@@ -264,6 +264,10 @@ class RemoteMain(object):
             self.__controller.execute_command('BRAKE')
         elif chr(key) == 'R':
             self.__controller.execute_command('REAR')
+        elif chr(key) == 'I':
+            self.__controller.execute_command('START_ANALYZE')
+        elif chr(key) == 'O':
+            self.__controller.execute_command('STOP_ANALYZE')
 
     def __update_frame(self):
         cv_image = self.__streamer.get_frame()

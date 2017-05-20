@@ -50,7 +50,7 @@ class SerialManager(threading.Thread):
                 self.__running_lock.release()
                 if bool(condition) is False:
                     break
-            time.sleep(400.0/1000.0) #too much locking on serial
+            time.sleep(100.0/1000.0) #too much locking on serial
 
         self.__serial_lock.acquire()
         self.__serial_file.close()
@@ -93,6 +93,7 @@ class SerialManager(threading.Thread):
     def __writer(self):
         for element in enumerate(self.__list_controller_commands):
             if len(element) > 1:
+                print element
                 self.__serial_lock.acquire()
                 self.__serial_file.write(str(element[1]))
                 self.__serial_lock.release()

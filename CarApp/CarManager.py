@@ -79,6 +79,7 @@ class CarManager(threading.Thread):
             threading.Thread(target=Analyser.Analyser.analyse, \
             args=(self.__analyser, FRAME_QUEUE, AUTONOMOUS_STATES_QUEUE, \
             COMMANDS_QUEUE, ANALYSED_FRAME_QUEUE))
+        self.__analyser_thread.is_analysing = False
         self.__analyser_thread.setDaemon(True)
         self.__analyser_thread.start()
 
@@ -163,5 +164,11 @@ class CarManager(threading.Thread):
             command = user_commands_queue.get(True, None)
             if str(command) == 'CLOSE':
                 self.stop()
-            commands_queue.put(command, True, None)
+            elif str(command) == 'START_ANALYZE':
+                self.__analyser_thread.is_analysing = True
+            elif str(command) == 'STOP_ANALYZE':
+                self.__analyser_thread.is_analysing = False
+            else:
+                commands_queue.put(command, True, None)
+
             user_commands_queue.task_done()
