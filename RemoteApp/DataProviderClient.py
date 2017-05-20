@@ -8,7 +8,7 @@ class DataProviderClient(threading.Thread):
     """
     Streamer Client Class
     """
-    def __init__(self, hostname='192.168.0.104', port=18089):
+    def __init__(self, hostname='192.168.0.109', port=18089):
         threading.Thread.__init__(self)
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.__server_address = (hostname, port)

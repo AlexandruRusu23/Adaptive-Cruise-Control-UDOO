@@ -24,7 +24,7 @@ class StreamerServer(object):
         # We want only one client
         self.__socket.listen(1)
         while getattr(current_thread, 'is_running', True):
-            print >>sys.stderr, 'waiting for a connection', self.__server_address
+            print >>sys.stderr, '[Stream Server] waiting for a connection', self.__server_address
             self.__connection, client_address = self.__socket.accept()
             try:
                 print >>sys.stderr, 'connection from', client_address

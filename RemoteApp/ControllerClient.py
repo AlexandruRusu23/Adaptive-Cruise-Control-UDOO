@@ -9,7 +9,7 @@ class ControllerClient(threading.Thread):
     """
     Controller Client Class
     """
-    def __init__(self, hostname='192.168.0.104', port=32656):
+    def __init__(self, hostname='192.168.0.109', port=32656):
         threading.Thread.__init__(self)
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.__server_address = (hostname, port)
@@ -59,7 +59,7 @@ class ControllerClient(threading.Thread):
         elif command_type == 'GO_RIGHT':
             self.__command_list.append('5/')
         elif command_type == 'SPEED_UP':
-            self.__command_list.append('1/')
+            self.__command_list.append('1/2/')
         elif command_type == 'SPEED_DOWN':
             self.__command_list.append('2/')
         elif command_type == 'BRAKE':
