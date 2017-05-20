@@ -127,7 +127,38 @@ void CommandManager()
   {
     case 1: // speed up
       {
-        if(turning == DISABLED)
+        getSerial();
+        switch(serialData)
+        {
+          case 1:
+          // mergi inainte (fara increase)
+          {
+            directionSpeed = normalSpeed;
+            turning = DISABLED;
+            action = "FRONT";
+            updateVectorSpeed();
+            break;
+          }
+          case 2:
+          // mergi inainte cu increase
+          {
+            if(turning == DISABLED)
+            {
+              if (normalSpeed < MIN_TRESHOLD)
+                normalSpeed = MIN_SPEED;
+              else if (normalSpeed < MAX_TRESHOLD)
+                normalSpeed += SPEED_UNIT;
+            }
+            directionSpeed = normalSpeed;
+            turning = DISABLED;
+            action = "SPEED_UP";
+    
+            updateVectorSpeed();
+            break;
+          }
+        }
+        
+        /*if(turning == DISABLED)
         {
           if (normalSpeed < MIN_TRESHOLD)
             normalSpeed = MIN_SPEED;
@@ -139,7 +170,7 @@ void CommandManager()
         turning = DISABLED;
         action = "SPEED_UP";
 
-        updateVectorSpeed();
+        updateVectorSpeed();*/
         break;
       }
     case 2: // speed down
