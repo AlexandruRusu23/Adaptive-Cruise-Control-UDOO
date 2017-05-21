@@ -10,15 +10,15 @@ import numpy.matlib
 # Region-of-interest vertices
 # We want a trapezoid shape, with bottom edge at the bottom of the image
 TRAPEZOID_BOTTOM_WIDTH = 1.2
-TRAPEZOID_TOP_WIDTH = 0.38
-TRAPEZOID_HEIGHT = 0.9
+TRAPEZOID_TOP_WIDTH = 0.65
+TRAPEZOID_HEIGHT = 0.8
 
 # Hough Transform
-HOUGH_DIST_RESOLUTION = 2 # distance resolution in pixels of the Hough grid
+HOUGH_DIST_RESOLUTION = 1 # distance resolution in pixels of the Hough grid
 ANGULAR_RESOLUTION = 1 * np.pi/180 # angular resolution in radians of the Hough grid
-HOUGH_THRESHOLD = 20 # minimum number of votes (intersections in Hough grid cell)
-MIN_LINE_LENGHT = 25 #minimum number of pixels making up a line
-MAX_LINE_GAP = 10	# maximum gap in pixels between connectable line segments
+HOUGH_THRESHOLD = 100 # minimum number of votes (intersections in Hough grid cell)
+MIN_LINE_LENGHT = 300 #minimum number of pixels making up a line
+MAX_LINE_GAP = 250	# maximum gap in pixels between connectable line segments
 
 ALPHA = 0.8
 BETA = 1.
@@ -33,7 +33,9 @@ class Analyser(object):
     Analyser class
     - responsible to analyse the current frame
     - detect lanes, cars, obstacles, road signs, etc
-    and send the commands to SerialManager
+    - send the commands to SerialManager via Controller queue
+    - send analysed frames to StreamServer via queue
+    - update user rights about controlling the car
     """
     def __init__(self):
         self.__current_frame = None
@@ -56,26 +58,21 @@ class Analyser(object):
             string_data = frame_queue.get(True, None)
             frame = numpy.fromstring(string_data, dtype='uint8')
             self.__current_frame = cv2.imdecode(frame, 1)
-            frame_queue.task_done()
 
             if getattr(current_thread, 'is_analysing', True):
                 self.__lane_assist(autonomous_states_queue, commands_queue)
-                result, encrypted_image = \
-                    cv2.imencode('.jpg', self.__current_frame, self.__encode_parameter)
-                if bool(result) is False:
-                    break
-                analysed_frame = numpy.array(encrypted_image)
-                analysed_frame_queue.put(analysed_frame)
-            else:
-                result, encrypted_image = \
-                    cv2.imencode('.jpg', self.__current_frame, self.__encode_parameter)
-                if bool(result) is False:
-                    break
-                analysed_frame = numpy.array(encrypted_image)
-                analysed_frame_queue.put(analysed_frame.tostring(), True, None)
+
+            result, encrypted_image = \
+                cv2.imencode('.jpg', self.__current_frame, self.__encode_parameter)
+
+            if bool(result) is False:
+                break
+
+            analysed_frame = numpy.array(encrypted_image)
+            analysed_frame_queue.put(analysed_frame.tostring())
+            frame_queue.task_done()
 
             #autonomous_states_queue.put()
-            #commands_queue.put()
 
     def __gaussian_blur(self, img, kernel_size=3):
         """Applies a Gaussian Noise kernel"""
@@ -202,6 +199,12 @@ class Analyser(object):
         if draw_left:
             cv2.line(img, (left_x1, y1), (left_x2, y2), color, thickness)
 
+        self.__lines_coords_list = []
+        self.__lines_coords_list.append((left_x1, y1))
+        self.__lines_coords_list.append((left_x2, y2))
+        self.__lines_coords_list.append((right_x1, y1))
+        self.__lines_coords_list.append((right_x2, y2))
+
         global RIGHT_X1_COORD
         global Y1_COORD
         global LEFT_X1_COORD
@@ -250,30 +253,24 @@ class Analyser(object):
 
         cv2.circle(final_image2, (final_x, Y1_COORD), 20, [255, 0, 0], 5)
 
-        # height, width, channels = self.__current_frame.shape
+        height, width, channels = self.__current_frame.shape
 
-        # if time.time() - self.__command_timer > 0.1:
+        if time.time() - self.__command_timer > 0.1:
 
-        #     if len(self.__lines_coords_list) > 3:
-        #         left_median_x = \
-        #             (self.__lines_coords_list[0][0] + self.__lines_coords_list[1][0]) / 2
-        #         right_median_x = \
-        #             (self.__lines_coords_list[2][0] + self.__lines_coords_list[3][0]) / 2
-        #         if left_median_x > 30 * width / 100:
-        #             if bool(self.__go_right) is False:
-        #                 commands_queue.put('5/')
-        #                 self.__go_forward = False
-        #                 self.__go_right = True
-        #         elif right_median_x < 70 * width / 100:
-        #             if bool(self.__go_left) is False:
-        #                 commands_queue.put('4/')
-        #                 self.__go_forward = False
-        #                 self.__go_left = True
-        #         else:
-        #             if bool(self.__go_forward) is False:
-        #                 commands_queue.put('1/1/')
-        #                 self.__go_forward = True
-        #                 self.__go_left = False
-        #                 self.__go_right = False
+            if len(self.__lines_coords_list) > 3:
+                left_median_x = \
+                    (self.__lines_coords_list[0][0] + self.__lines_coords_list[1][0]) / 2
+                right_median_x = \
+                    (self.__lines_coords_list[2][0] + self.__lines_coords_list[3][0]) / 2
+                if left_median_x > 30 * width / 100:
+                    commands_queue.put('5/')
+                    self.__go_forward = False
+                elif right_median_x < 70 * width / 100:
+                    commands_queue.put('4/')
+                    self.__go_forward = False
+                else:
+                    if bool(self.__go_forward) is False:
+                        commands_queue.put('1/1/')
+                        self.__go_forward = True
 
         self.__current_frame = final_image2
