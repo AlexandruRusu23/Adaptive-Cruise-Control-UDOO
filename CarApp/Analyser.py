@@ -202,12 +202,6 @@ class Analyser(object):
         if draw_left:
             cv2.line(img, (left_x1, y1), (left_x2, y2), color, thickness)
 
-        self.__lines_coords_list = []
-        self.__lines_coords_list.append((left_x1, y1))
-        self.__lines_coords_list.append((left_x2, y2))
-        self.__lines_coords_list.append((right_x1, y1))
-        self.__lines_coords_list.append((right_x2, y2))
-
         global RIGHT_X1_COORD
         global Y1_COORD
         global LEFT_X1_COORD
@@ -254,32 +248,32 @@ class Analyser(object):
 
         final_x = (RIGHT_X1_COORD + LEFT_X1_COORD)/2
 
-        cv2.circle(final_image2, (final_x, Y1_COORD), 50, [255, 0, 0], 5)
+        cv2.circle(final_image2, (final_x, Y1_COORD), 20, [255, 0, 0], 5)
 
-        height, width, channels = self.__current_frame.shape
+        # height, width, channels = self.__current_frame.shape
 
-        if time.time() - self.__command_timer > 0.1:
+        # if time.time() - self.__command_timer > 0.1:
 
-            if len(self.__lines_coords_list) > 3:
-                left_median_x = \
-                    (self.__lines_coords_list[0][0] + self.__lines_coords_list[1][0]) / 2
-                right_median_x = \
-                    (self.__lines_coords_list[2][0] + self.__lines_coords_list[3][0]) / 2
-                if left_median_x > 30 * width / 100:
-                    if bool(self.__go_right) is False:
-                        commands_queue.put('5/')
-                        self.__go_forward = False
-                        self.__go_right = True
-                elif right_median_x < 70 * width / 100:
-                    if bool(self.__go_left) is False:
-                        commands_queue.put('4/')
-                        self.__go_forward = False
-                        self.__go_left = True
-                else:
-                    if bool(self.__go_forward) is False:
-                        commands_queue.put('1/1/')
-                        self.__go_forward = True
-                        self.__go_left = False
-                        self.__go_right = False
+        #     if len(self.__lines_coords_list) > 3:
+        #         left_median_x = \
+        #             (self.__lines_coords_list[0][0] + self.__lines_coords_list[1][0]) / 2
+        #         right_median_x = \
+        #             (self.__lines_coords_list[2][0] + self.__lines_coords_list[3][0]) / 2
+        #         if left_median_x > 30 * width / 100:
+        #             if bool(self.__go_right) is False:
+        #                 commands_queue.put('5/')
+        #                 self.__go_forward = False
+        #                 self.__go_right = True
+        #         elif right_median_x < 70 * width / 100:
+        #             if bool(self.__go_left) is False:
+        #                 commands_queue.put('4/')
+        #                 self.__go_forward = False
+        #                 self.__go_left = True
+        #         else:
+        #             if bool(self.__go_forward) is False:
+        #                 commands_queue.put('1/1/')
+        #                 self.__go_forward = True
+        #                 self.__go_left = False
+        #                 self.__go_right = False
 
         self.__current_frame = final_image2

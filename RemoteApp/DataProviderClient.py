@@ -8,7 +8,7 @@ class DataProviderClient(threading.Thread):
     """
     Streamer Client Class
     """
-    def __init__(self, hostname='192.168.0.109', port=18089):
+    def __init__(self, hostname='192.168.0.105', port=18089):
         threading.Thread.__init__(self)
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.__server_address = (hostname, port)
@@ -42,7 +42,7 @@ class DataProviderClient(threading.Thread):
 
     def stop(self):
         """
-        stop the streamer client
+        stop the data provider client
         """
         self.__is_running_lock.acquire()
         self.__is_running = False

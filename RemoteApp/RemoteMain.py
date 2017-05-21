@@ -310,10 +310,13 @@ class RemoteMain(object):
         self.__controller.execute_command('CLOSE')
         self.__streamer.stop()
         self.__controller.stop()
+        self.__data_provider.stop()
         self.__streamer.join()
         print 'Streamer thread closed'
         self.__controller.join()
         print 'Controller thread closed'
+        self.__data_provider.join()
+        print 'Data Provider closed'
 
 if __name__ == "__main__":
     MAIN_APP = QtGui.QApplication(sys.argv)
