@@ -17,8 +17,8 @@ TRAPEZOID_HEIGHT = 0.8
 HOUGH_DIST_RESOLUTION = 1 # distance resolution in pixels of the Hough grid
 ANGULAR_RESOLUTION = 1 * np.pi/180 # angular resolution in radians of the Hough grid
 HOUGH_THRESHOLD = 100 # minimum number of votes (intersections in Hough grid cell)
-MIN_LINE_LENGHT = 300 #minimum number of pixels making up a line
-MAX_LINE_GAP = 250	# maximum gap in pixels between connectable line segments
+MIN_LINE_LENGHT = 150 #minimum number of pixels making up a line
+MAX_LINE_GAP = 120	# maximum gap in pixels between connectable line segments
 
 ALPHA = 0.8
 BETA = 1.
