@@ -7,6 +7,18 @@ import cv2
 import numpy as np
 import numpy.matlib
 
+import DetectChars
+import DetectPlates
+import PossiblePlate
+
+SCALAR_BLACK = (0.0, 0.0, 0.0)
+SCALAR_WHITE = (255.0, 255.0, 255.0)
+SCALAR_YELLOW = (0.0, 255.0, 255.0)
+SCALAR_GREEN = (0.0, 255.0, 0.0)
+SCALAR_RED = (0.0, 0.0, 255.0)
+
+showSteps = False
+
 # Region-of-interest vertices
 # We want a trapezoid shape, with bottom edge at the bottom of the image
 TRAPEZOID_BOTTOM_WIDTH = 1.2
@@ -16,9 +28,9 @@ TRAPEZOID_HEIGHT = 0.8
 # Hough Transform
 HOUGH_DIST_RESOLUTION = 1 # distance resolution in pixels of the Hough grid
 ANGULAR_RESOLUTION = 1 * np.pi/180 # angular resolution in radians of the Hough grid
-HOUGH_THRESHOLD = 100 # minimum number of votes (intersections in Hough grid cell)
-MIN_LINE_LENGHT = 150 #minimum number of pixels making up a line
-MAX_LINE_GAP = 120	# maximum gap in pixels between connectable line segments
+HOUGH_THRESHOLD = 50 # minimum number of votes (intersections in Hough grid cell)
+MIN_LINE_LENGHT = 70 #minimum number of pixels making up a line
+MAX_LINE_GAP = 60	# maximum gap in pixels between connectable line segments
 
 ALPHA = 0.8
 BETA = 1.
@@ -54,13 +66,18 @@ class Analyser(object):
         """
         current_thread = threading.currentThread()
         self.__command_timer = time.time()
+        bln_knn_training_successful = DetectChars.loadKNNDataAndTrainKNN() # attempt KNN training
+        if bool(bln_knn_training_successful) is False:
+            return
         while getattr(current_thread, 'is_running', True):
             string_data = frame_queue.get(True, None)
             frame = numpy.fromstring(string_data, dtype='uint8')
             self.__current_frame = cv2.imdecode(frame, 1)
 
             if getattr(current_thread, 'is_analysing', True):
-                self.__lane_assist(autonomous_states_queue, commands_queue)
+                self.__car_detection(commands_queue, autonomous_states_queue)
+                self.__lane_assist(commands_queue)
+                self.__draw_car_orientation()
 
             result, encrypted_image = \
                 cv2.imencode('.jpg', self.__current_frame, self.__encode_parameter)
@@ -73,6 +90,43 @@ class Analyser(object):
             frame_queue.task_done()
 
             #autonomous_states_queue.put()
+
+    def __draw_rect_around_plate(self, current_scene, lic_plate):
+        p2f_rect_points = cv2.boxPoints(lic_plate.rrLocationOfPlateInScene)
+
+        cv2.line(current_scene, tuple(p2f_rect_points[0]), \
+            tuple(p2f_rect_points[1]), SCALAR_RED, 2)
+        cv2.line(current_scene, tuple(p2f_rect_points[1]), \
+            tuple(p2f_rect_points[2]), SCALAR_RED, 2)
+        cv2.line(current_scene, tuple(p2f_rect_points[2]), \
+            tuple(p2f_rect_points[3]), SCALAR_RED, 2)
+        cv2.line(current_scene, tuple(p2f_rect_points[3]), \
+            tuple(p2f_rect_points[0]), SCALAR_RED, 2)
+
+        return p2f_rect_points
+
+    def __draw_distance_to_car(self, lic_plate):
+        height, width, channels = self.__current_frame.shape
+        p2f_rect_points = cv2.boxPoints(lic_plate.rrLocationOfPlateInScene)
+        distance_to_car = height - p2f_rect_points[3][1]
+        distance_to_car = float("{0:.2f}".format(distance_to_car))
+        distance_position = (2 * width / 100, 95 * height / 100)
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        cv2.putText(self.__current_frame, 'Distance:' + str(distance_to_car) + 'cm', \
+            distance_position, font, 1, (0, 255, 255), 2, cv2.LINE_AA)
+
+    def __car_detection(self, commands_queue, autonomous_states_queue):
+        list_of_possible_plates = DetectPlates.detectPlatesInScene(self.__current_frame)
+
+        list_of_possible_plates = DetectChars.detectCharsInPlates(list_of_possible_plates)
+
+        list_of_possible_plates.sort(key=lambda possiblePlate: len(possiblePlate.strChars), \
+            reverse=True)
+
+        if len(list_of_possible_plates) > 0:
+            plate_points = lic_plate = list_of_possible_plates[0]
+            self.__draw_distance_to_car(lic_plate)
+            self.__draw_rect_around_plate(self.__current_frame, lic_plate)
 
     def __gaussian_blur(self, img, kernel_size=3):
         """Applies a Gaussian Noise kernel"""
@@ -106,7 +160,9 @@ class Analyser(object):
         masked_image = cv2.bitwise_and(img, mask)
         return masked_image
 
-    def __draw_lines(self, img, lines, color=[255, 0, 0], thickness=5):
+    def __draw_lines(self, img, lines, color=None, thickness=5):
+        if color is None:
+            color = [255, 0, 0]
         if lines is None:
             return
         if len(lines) == 0:
@@ -213,9 +269,9 @@ class Analyser(object):
         Y1_COORD = y1
         LEFT_X1_COORD = left_x1
 
-    def __hough_lines(self, img, HOUGH_DIST_RESOLUTION, ANGULAR_RESOLUTION, HOUGH_THRESHOLD, min_line_len, MAX_LINE_GAP):
-        lines = cv2.HoughLinesP(img, HOUGH_DIST_RESOLUTION, ANGULAR_RESOLUTION, HOUGH_THRESHOLD, np.array([]), \
-            minLineLength=min_line_len, maxLineGap=MAX_LINE_GAP)
+    def __hough_lines(self, img):
+        lines = cv2.HoughLinesP(img, HOUGH_DIST_RESOLUTION, ANGULAR_RESOLUTION, \
+            HOUGH_THRESHOLD, np.array([]), minLineLength=MIN_LINE_LENGHT, maxLineGap=MAX_LINE_GAP)
 
         (x1, x2) = img.shape
         dt = np.dtype(np.uint8)
@@ -224,7 +280,43 @@ class Analyser(object):
 
         return line_img
 
-    def __lane_assist(self, autonomous_states_queue, commands_queue):
+    def __draw_car_orientation(self):
+        height, width, channels = self.__current_frame.shape
+
+        pick_x_coord = width / 2
+        pick_y_coord = 50 * height / 100
+        pick_width = 20 * width / 100
+        pick_height = 15 * height / 100
+        base_width = 20 * width / 100
+        base_height = 30 * height / 100
+
+        car_arrow_vertex = []
+        # varf sageata
+        car_arrow_vertex.append([pick_x_coord, pick_y_coord])
+        #colt dreapta triungi
+        car_arrow_vertex.append([pick_x_coord + pick_width, pick_y_coord + pick_height])
+        #colt dreapta-sus patrat
+        car_arrow_vertex.append([pick_x_coord + base_width / 2, pick_y_coord + pick_height])
+        #colt dreapta-jos patrat
+        car_arrow_vertex.append([pick_x_coord + base_width, \
+            pick_y_coord + pick_height + base_height])
+        #colt stanga-jos patrat
+        car_arrow_vertex.append([pick_x_coord - base_width, \
+            pick_y_coord + pick_height + base_height])
+        #colt stanga-sus patrat
+        car_arrow_vertex.append([pick_x_coord - base_width / 2, pick_y_coord + pick_height])
+        #colt stanga triunghi
+        car_arrow_vertex.append([pick_x_coord - pick_width, pick_y_coord + pick_height])
+
+        overlay = self.__current_frame.copy()
+
+        pts = np.array(car_arrow_vertex, np.int32)
+        pts = pts.reshape((-1, 1, 2))
+        cv2.fillConvexPoly(overlay, pts, (0, 255, 255))
+        alpha = 0.2
+        cv2.addWeighted(overlay, alpha, self.__current_frame, 1 - alpha, 0, self.__current_frame)
+
+    def __lane_assist(self, commands_queue):
         grey = self.__grayscale(self.__current_frame)
         blur_grey = self.__gaussian_blur(grey)
 
@@ -240,8 +332,7 @@ class Analyser(object):
 
         masked_image = self.__region_of_interest(edges, vertices)
 
-        line_image = self.__hough_lines(masked_image, HOUGH_DIST_RESOLUTION, ANGULAR_RESOLUTION, \
-            HOUGH_THRESHOLD, MIN_LINE_LENGHT, MAX_LINE_GAP)
+        line_image = self.__hough_lines(masked_image)
 
         final_image = self.__current_frame.astype('uint8')
 
@@ -249,28 +340,23 @@ class Analyser(object):
 
         final_image2 = final_image.astype('uint8')
 
-        final_x = (RIGHT_X1_COORD + LEFT_X1_COORD)/2
+        #height, width, channels = self.__current_frame.shape
 
-        cv2.circle(final_image2, (final_x, Y1_COORD), 20, [255, 0, 0], 5)
-
-        height, width, channels = self.__current_frame.shape
-
-        if time.time() - self.__command_timer > 0.1:
-
-            if len(self.__lines_coords_list) > 3:
-                left_median_x = \
-                    (self.__lines_coords_list[0][0] + self.__lines_coords_list[1][0]) / 2
-                right_median_x = \
-                    (self.__lines_coords_list[2][0] + self.__lines_coords_list[3][0]) / 2
-                if left_median_x > 30 * width / 100:
-                    commands_queue.put('5/')
-                    self.__go_forward = False
-                elif right_median_x < 70 * width / 100:
-                    commands_queue.put('4/')
-                    self.__go_forward = False
-                else:
-                    if bool(self.__go_forward) is False:
-                        commands_queue.put('1/1/')
-                        self.__go_forward = True
+        # if time.time() - self.__command_timer > 0.1:
+        #     if len(self.__lines_coords_list) > 3:
+        #         left_median_x = \
+        #             (self.__lines_coords_list[0][0] + self.__lines_coords_list[1][0]) / 2
+        #         right_median_x = \
+        #             (self.__lines_coords_list[2][0] + self.__lines_coords_list[3][0]) / 2
+        #         if left_median_x > 30 * width / 100:
+        #             commands_queue.put('5/')
+        #             self.__go_forward = False
+        #         elif right_median_x < 70 * width / 100:
+        #             commands_queue.put('4/')
+        #             self.__go_forward = False
+        #         else:
+        #             if bool(self.__go_forward) is False:
+        #                 commands_queue.put('1/1/')
+        #                 self.__go_forward = True
 
         self.__current_frame = final_image2
