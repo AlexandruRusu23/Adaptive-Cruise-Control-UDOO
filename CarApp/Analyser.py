@@ -77,8 +77,8 @@ class Analyser(object):
             if getattr(current_thread, 'is_analysing', True):
                 self.__car_detection(commands_queue, autonomous_states_queue)
                 self.__lane_assist(commands_queue)
-                self.__draw_car_orientation()
 
+            self.__draw_car_orientation()
             result, encrypted_image = \
                 cv2.imencode('.jpg', self.__current_frame, self.__encode_parameter)
 
@@ -110,6 +110,7 @@ class Analyser(object):
         p2f_rect_points = cv2.boxPoints(lic_plate.rrLocationOfPlateInScene)
         distance_to_car = height - p2f_rect_points[3][1]
         distance_to_car = float("{0:.2f}".format(distance_to_car))
+        distance_to_car = distance_to_car / 6.0
         distance_position = (2 * width / 100, 95 * height / 100)
         font = cv2.FONT_HERSHEY_SIMPLEX
         cv2.putText(self.__current_frame, 'Distance:' + str(distance_to_car) + 'cm', \
