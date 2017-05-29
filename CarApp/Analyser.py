@@ -53,10 +53,14 @@ class Analyser(object):
         self.__current_frame = None
         self.__encode_parameter = [int(cv2.IMWRITE_JPEG_QUALITY), 60]
         self.__command_timer = 0
+        self.__fps_timer = 0
 
         self.__go_forward = False
         self.__go_left = False
         self.__go_right = False
+
+        self.__fps_counter = 0
+        self.__frame_fps = 0
 
         self.__lines_coords_list = []
 
@@ -69,6 +73,8 @@ class Analyser(object):
         bln_knn_training_successful = DetectChars.loadKNNDataAndTrainKNN() # attempt KNN training
         if bool(bln_knn_training_successful) is False:
             return
+
+        self.__fps_timer = time.time()
         while getattr(current_thread, 'is_running', True):
             string_data = frame_queue.get(True, None)
             frame = numpy.fromstring(string_data, dtype='uint8')
@@ -79,6 +85,7 @@ class Analyser(object):
                 self.__lane_assist(commands_queue)
 
             self.__draw_car_orientation()
+            self.__draw_fps()
             result, encrypted_image = \
                 cv2.imencode('.jpg', self.__current_frame, self.__encode_parameter)
 
@@ -88,8 +95,18 @@ class Analyser(object):
             analysed_frame = numpy.array(encrypted_image)
             analysed_frame_queue.put(analysed_frame.tostring())
             frame_queue.task_done()
+            self.__fps_counter = self.__fps_counter + 1
+
+            if time.time() - self.__fps_timer > 1:
+                self.__frame_fps = self.__fps_counter
+                self.__fps_counter = 0
+                self.__fps_timer = time.time()
 
             #autonomous_states_queue.put()
+    def __draw_fps(self):
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        cv2.putText(self.__current_frame, str(self.__frame_fps), \
+            (0, 20), font, 1, (0, 255, 255), 2, cv2.LINE_AA)
 
     def __draw_rect_around_plate(self, current_scene, lic_plate):
         p2f_rect_points = cv2.boxPoints(lic_plate.rrLocationOfPlateInScene)
