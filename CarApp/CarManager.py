@@ -136,13 +136,21 @@ class CarManager(threading.Thread):
 
         # join
         self.__controller_thread.join()
+        print '[Controller] Thread stopped.'
         self.__car_data_thread.join()
+        print '[CarData] Thread stopped.'
         self.__recorder_thread.join()
+        print '[Recorder] Thread stopped.'
         self.__analyser_thread.join()
+        print '[Analyser] Thread stopped.'
         self.__rights_thread.join()
+        print '[UserRights] Thread stopped.'
         self.__process_user_commands_thread.join()
+        print '[UserCommands] Thread stopped.'
         self.__streamer_thread.join()
+        print '[Streamer] Thread stopped.'
         self.__user_comunicator_thread.join()
+        print '[UserComunicator] Thread stopped.'
 
     def get_ip_address(self):
         """
@@ -163,6 +171,7 @@ class CarManager(threading.Thread):
         while getattr(current_thread, 'is_running', True):
             command = user_commands_queue.get(True, None)
             if str(command) == 'CLOSE':
+                current_thread.is_running = False
                 self.stop()
             elif str(command) == 'START_ANALYZE':
                 self.__analyser_thread.is_analysing = True

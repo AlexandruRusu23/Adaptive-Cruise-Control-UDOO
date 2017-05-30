@@ -37,7 +37,7 @@ class Recorder(object):
                 if bool(result) is False:
                     break
                 data = numpy.array(encrypted_image)
-                frame_queue.put(data.tostring(), True, None)
+                frame_queue.put(data.tostring())
             else:
                 break
 

@@ -65,14 +65,15 @@ class RemoteMain(object):
     """
     Remote Main Class
     """
-    def __init__(self):
+
+    def __init__(self, server_host):
         """
         All components needed for UI
         * declare first in __init__ as None
         """
-        self.__controller = ControllerClient.ControllerClient()
-        self.__streamer = StreamerClient.StreamerClient()
-        self.__data_provider = DataProviderClient.DataProviderClient()
+        self.__controller = ControllerClient.ControllerClient(server_host)
+        self.__streamer = StreamerClient.StreamerClient(server_host)
+        self.__data_provider = DataProviderClient.DataProviderClient(server_host)
         self.__streamer_image_thread = None
 
         self.window_width = None
@@ -321,7 +322,10 @@ class RemoteMain(object):
 if __name__ == "__main__":
     MAIN_APP = QtGui.QApplication(sys.argv)
     MAIN_WINDOW = QtGui.QMainWindow()
-    USER_INTERFACE = RemoteMain()
-    USER_INTERFACE.setup_ui(MAIN_WINDOW)
-    MAIN_WINDOW.show()
-    sys.exit(MAIN_APP.exec_())
+    if len(sys.argv) > 1:
+        USER_INTERFACE = RemoteMain(str(sys.argv[1]))
+        USER_INTERFACE.setup_ui(MAIN_WINDOW)
+        MAIN_WINDOW.show()
+        sys.exit(MAIN_APP.exec_())
+    else:
+        print 'No ip given'

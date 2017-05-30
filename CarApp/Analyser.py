@@ -81,7 +81,7 @@ class Analyser(object):
             self.__current_frame = cv2.imdecode(frame, 1)
 
             if getattr(current_thread, 'is_analysing', True):
-                self.__car_detection(commands_queue, autonomous_states_queue)
+                #self.__car_detection(commands_queue, autonomous_states_queue)
                 self.__lane_assist(commands_queue)
 
             self.__draw_car_orientation()
@@ -106,7 +106,7 @@ class Analyser(object):
     def __draw_fps(self):
         font = cv2.FONT_HERSHEY_SIMPLEX
         cv2.putText(self.__current_frame, str(self.__frame_fps), \
-            (0, 20), font, 1, (0, 255, 255), 2, cv2.LINE_AA)
+            (0, 21), font, 1, (0, 255, 255), 2, cv2.LINE_AA)
 
     def __draw_rect_around_plate(self, current_scene, lic_plate):
         p2f_rect_points = cv2.boxPoints(lic_plate.rrLocationOfPlateInScene)

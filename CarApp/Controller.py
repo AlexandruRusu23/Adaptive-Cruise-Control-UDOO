@@ -50,8 +50,8 @@ class Controller(object):
             else: #computer
                 self.__serial_manager = SerialManager.SerialManager(self.__board_name[0], 9600)
         else:
-            print 'Controller Stoped'
             self.__stop_serial_manager()
+            return
 
         print 'Serial Manager connected to', self.__board_name[0]
         self.__serial_connected = True
@@ -62,7 +62,6 @@ class Controller(object):
         """
         self.__connect()
         self.__serial_manager.start()
-        print 'Serial Manager reading thread has been started'
 
     def __stop_serial_manager(self):
         """
@@ -70,7 +69,6 @@ class Controller(object):
         """
         self.__serial_manager.stop()
         self.__serial_manager.join()
-        print 'Serial Manager thread has been stopped'
 
     def get_car_data(self, car_data_queue):
         """
