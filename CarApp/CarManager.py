@@ -1,21 +1,19 @@
 """
 Car Manager module
- - responsible for every components
+ - responsible for every components that have to run on Car
 """
+import time
 import Queue
 import threading
 import socket
 import Recorder
 import Controller
-import Analyser
-import StreamServer
-import UserComunicatorServer
+import StreamerServer
+import CommunicatorServer
 import DataProviderServer
 
 FRAME_QUEUE = Queue.Queue(1)
 COMMANDS_QUEUE = Queue.Queue(1)
-AUTONOMOUS_STATES_QUEUE = Queue.Queue(1)
-ANALYSED_FRAME_QUEUE = Queue.Queue(1)
 USER_COMMANDS_QUEUE = Queue.Queue(1)
 CAR_DATA_QUEUE = Queue.Queue(1)
 
@@ -27,19 +25,19 @@ class CarManager(threading.Thread):
         threading.Thread.__init__(self)
         self.__controller = None
         self.__recorder = None
-        self.__analyser = None
-        self.__streamer = None
-        self.__user_comunicator = None
+        self.__streamer_server = None
+        self.__communicator_server = None
         self.__data_provider_server = None
+
+        self.__is_running = False
+        self.__is_running_lock = threading.Lock()
 
         # threads
         self.__controller_thread = None
         self.__car_data_thread = None
         self.__recorder_thread = None
-        self.__analyser_thread = None
         self.__streamer_thread = None
-        self.__user_comunicator_thread = None
-        self.__rights_thread = None
+        self.__communicator_thread = None
         self.__process_user_commands_thread = None
         self.__data_provider_thread = None
 
@@ -47,11 +45,14 @@ class CarManager(threading.Thread):
         self.__autonomous_rights = None
 
     def run(self):
+        self.__is_running_lock.acquire()
+        self.__is_running = True
+        self.__is_running_lock.release()
+
         self.__controller = Controller.Controller()
         self.__recorder = Recorder.Recorder()
-        self.__analyser = Analyser.Analyser()
-        self.__user_comunicator = UserComunicatorServer.UserComunicatorServer(self.get_ip_address())
-        self.__streamer = StreamServer.StreamerServer(self.get_ip_address())
+        self.__communicator_server = CommunicatorServer.CommunicatorServer(self.get_ip_address())
+        self.__streamer_server = StreamerServer.StreamerServer(self.get_ip_address())
         self.__data_provider_server = DataProviderServer.DataProviderServer(self.get_ip_address())
 
         # control car motors thread
@@ -74,28 +75,19 @@ class CarManager(threading.Thread):
         self.__recorder_thread.setDaemon(True)
         self.__recorder_thread.start()
 
-        # analyse current frame thread
-        self.__analyser_thread = \
-            threading.Thread(target=Analyser.Analyser.analyse, \
-            args=(self.__analyser, FRAME_QUEUE, AUTONOMOUS_STATES_QUEUE, \
-            COMMANDS_QUEUE, ANALYSED_FRAME_QUEUE))
-        self.__analyser_thread.is_analysing = False
-        self.__analyser_thread.setDaemon(True)
-        self.__analyser_thread.start()
-
         # streamer server thread
         self.__streamer_thread = \
-            threading.Thread(target=self.__streamer.stream, \
-            args=(ANALYSED_FRAME_QUEUE,))
+            threading.Thread(target=self.__streamer_server.stream, \
+            args=(FRAME_QUEUE,))
         self.__streamer_thread.setDaemon(True)
         self.__streamer_thread.start()
 
-        # user comunicator server thread
-        self.__user_comunicator_thread = \
-            threading.Thread(target=self.__user_comunicator.update_user_commands, \
+        # comunicator server thread
+        self.__communicator_thread = \
+            threading.Thread(target=self.__communicator_server.update_user_commands, \
             args=(USER_COMMANDS_QUEUE,))
-        self.__user_comunicator_thread.setDaemon(True)
-        self.__user_comunicator_thread.start()
+        self.__communicator_thread.setDaemon(True)
+        self.__communicator_thread.start()
 
         # data provider server thread
         self.__data_provider_thread = \
@@ -104,19 +96,23 @@ class CarManager(threading.Thread):
         self.__data_provider_thread.setDaemon(True)
         self.__data_provider_thread.start()
 
-        # update user rights thread
-        self.__rights_thread = \
-            threading.Thread(target=self.__update_user_rights, \
-            args=(AUTONOMOUS_STATES_QUEUE,))
-        self.__rights_thread.setDaemon(True)
-        self.__rights_thread.start()
-
         # user commands thread
         self.__process_user_commands_thread = \
             threading.Thread(target=self.__process_user_commands, \
             args=(USER_COMMANDS_QUEUE, COMMANDS_QUEUE,))
         self.__process_user_commands_thread.setDaemon(True)
         self.__process_user_commands_thread.start()
+
+        print 'am startat tot'
+
+        while True:
+            self.__is_running_lock.acquire()
+            condition = self.__is_running
+            self.__is_running_lock.release()
+            if bool(condition) is False:
+                self.stop()
+                break
+            time.sleep(1)
 
     def stop(self):
         """
@@ -126,13 +122,16 @@ class CarManager(threading.Thread):
         self.__controller_thread.is_running = False
         self.__car_data_thread.is_running = False
         self.__recorder_thread.is_running = False
-        self.__analyser_thread.is_running = False
-        self.__rights_thread.is_running = False
         self.__process_user_commands_thread.is_running = False
         self.__streamer_thread.is_connected = False
         self.__streamer_thread.is_running = False
-        self.__user_comunicator_thread.is_connected = False
-        self.__user_comunicator_thread.is_running = False
+        self.__communicator_thread.is_connected = False
+        self.__communicator_thread.is_running = False
+        self.__data_provider_thread.is_connected = False
+        self.__data_provider_thread.is_running = False
+        self.__is_running_lock.acquire()
+        self.__is_running = False
+        self.__is_running_lock.release()
 
         # join
         self.__controller_thread.join()
@@ -141,16 +140,14 @@ class CarManager(threading.Thread):
         print '[CarData] Thread stopped.'
         self.__recorder_thread.join()
         print '[Recorder] Thread stopped.'
-        self.__analyser_thread.join()
-        print '[Analyser] Thread stopped.'
-        self.__rights_thread.join()
-        print '[UserRights] Thread stopped.'
         self.__process_user_commands_thread.join()
         print '[UserCommands] Thread stopped.'
         self.__streamer_thread.join()
         print '[Streamer] Thread stopped.'
-        self.__user_comunicator_thread.join()
+        self.__communicator_thread.join()
         print '[UserComunicator] Thread stopped.'
+        self.__data_provider_thread.join()
+        print '[DataProvider] Thread stopped.'
 
     def get_ip_address(self):
         """
@@ -158,26 +155,19 @@ class CarManager(threading.Thread):
         """
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.connect(("8.8.8.8", 80))
-        return sock.getsockname()[0]
-
-    def __update_user_rights(self, autonomous_states_queue):
-        current_thread = threading.currentThread()
-        while getattr(current_thread, 'is_running', True):
-            autonomous_states_queue.get(True, None)
-            autonomous_states_queue.task_done()
+        output = sock.getsockname()[0]
+        sock.close()
+        return output
 
     def __process_user_commands(self, user_commands_queue, commands_queue):
         current_thread = threading.currentThread()
         while getattr(current_thread, 'is_running', True):
             command = user_commands_queue.get(True, None)
-            if str(command) == 'CLOSE':
-                current_thread.is_running = False
-                self.stop()
-            elif str(command) == 'START_ANALYZE':
-                self.__analyser_thread.is_analysing = True
-            elif str(command) == 'STOP_ANALYZE':
-                self.__analyser_thread.is_analysing = False
+            if 'CLOSE' in str(command):
+                self.__is_running_lock.acquire()
+                self.__is_running = False
+                self.__is_running_lock.release()
             else:
-                commands_queue.put(command, True, None)
-
+                commands_queue.put(str(command), True, None)
             user_commands_queue.task_done()
+        print '[User_Commands] Thread has stopped.'

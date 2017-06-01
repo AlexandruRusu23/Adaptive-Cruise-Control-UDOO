@@ -50,56 +50,64 @@ class Controller(object):
             else: #computer
                 self.__serial_manager = SerialManager.SerialManager(self.__board_name[0], 9600)
         else:
-            self.__stop_serial_manager()
-            return
+            print '[Controller] No device to connect to'
+            return False
 
-        print 'Serial Manager connected to', self.__board_name[0]
+        #print '[Controller] Serial Manager connected to', self.__board_name[0]
         self.__serial_connected = True
+        return True
+
+    def __is_connected(self):
+        self.__serial_connected_lock.acquire()
+        output = self.__serial_connected
+        self.__serial_connected_lock.release()
+        return output
 
     def __start_serial_manager(self):
         """
         Start the SerialManager to read car states
         """
-        self.__connect()
-        self.__serial_manager.start()
+        self.__serial_connected_lock.acquire()
+        if bool(self.__connect()) is True:
+            self.__serial_manager.start()
+            self.__serial_connected = True
+        self.__serial_connected_lock.release()
 
     def __stop_serial_manager(self):
         """
         Stop the SerialManager
         """
-        self.__serial_manager.stop()
-        self.__serial_manager.join()
+        self.__serial_connected_lock.acquire()
+        if bool(self.__serial_connected) is True:
+            self.__serial_manager.stop()
+            self.__serial_manager.join()
+            self.__serial_connected_lock.acquire()
+            self.__serial_connected = False
+            self.__serial_connected_lock.release()
+        self.__serial_connected_lock.release()
 
     def get_car_data(self, car_data_queue):
         """
         get the dictionary with car states from SerialManager
         """
         current_thread = threading.currentThread()
-        self.__serial_connected_lock.acquire()
-        if self.__serial_connected is False:
+
+        if bool(self.__is_connected()) is False:
             self.__start_serial_manager()
-            self.__serial_connected = True
-        self.__serial_connected_lock.release()
 
         while getattr(current_thread, 'is_running', True):
             car_data_queue.put(self.__serial_manager.get_car_data())
 
-        self.__serial_connected_lock.acquire()
-        if self.__serial_connected is True:
-            self.__stop_serial_manager()
-            self.__serial_connected = False
-        self.__serial_connected_lock.release()
+        self.__stop_serial_manager()
 
     def send_commands(self, commands_queue):
         """
         send commands to SerialManager
         """
         current_thread = threading.currentThread()
-        self.__serial_connected_lock.acquire()
-        if self.__serial_connected is False:
+
+        if bool(self.__is_connected()) is False:
             self.__start_serial_manager()
-            self.__serial_connected = True
-        self.__serial_connected_lock.release()
 
         while getattr(current_thread, 'is_running', True):
             commands_list = [commands_queue.get(True, None)]
@@ -107,8 +115,5 @@ class Controller(object):
             self.__serial_manager.execute_commands()
             commands_queue.task_done()
 
-        self.__serial_connected_lock.acquire()
-        if self.__serial_connected is True:
-            self.__stop_serial_manager()
-            self.__serial_connected = False
-        self.__serial_connected_lock.release()
+
+        self.__stop_serial_manager()

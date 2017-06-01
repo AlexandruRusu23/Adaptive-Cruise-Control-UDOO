@@ -77,33 +77,29 @@ class SerialManager(threading.Thread):
         self.__serial_lock.acquire()
         line = self.__serial_file.readline()
         self.__serial_lock.release()
-        if len(line) < 1:
-            return
-        if 'CAR_DATA' not in line:
-            return
-        self.__serial_lock.acquire()
-        line = self.__serial_file.readline()
-        self.__serial_lock.release()
-        if len(line) < 1:
-            return
-        while 'END_CAR_DATA' not in line:
-            if len(line) < 1:
-                break
-            self.__store_in_dictionary(line)
-            self.__serial_lock.acquire()
-            line = self.__serial_file.readline()
-            self.__serial_lock.release()
+        if len(line) > 1:
+            if 'CAR_DATA' in line:
+                self.__serial_lock.acquire()
+                line = self.__serial_file.readline()
+                self.__serial_lock.release()
+                if len(line) > 1:
+                    while 'END_CAR_DATA' not in line:
+                        if len(line) < 1:
+                            break
+                        self.__store_in_dictionary(line)
+                        self.__serial_lock.acquire()
+                        line = self.__serial_file.readline()
+                        self.__serial_lock.release()
 
     def __store_in_dictionary(self, line_to_store):
         """
         Convert from string to dictionary fields
         """
         line_to_store_tokenized = re.findall(r"[\w.]+", line_to_store)
-        if len(line_to_store_tokenized) < 1:
-            return
-        self.__dict_lock.acquire()
-        self.__dict_scanner_data[line_to_store_tokenized[0]] = line_to_store_tokenized[1]
-        self.__dict_lock.release()
+        if len(line_to_store_tokenized) > 1:
+            self.__dict_lock.acquire()
+            self.__dict_scanner_data[line_to_store_tokenized[0]] = line_to_store_tokenized[1]
+            self.__dict_lock.release()
 
     def __writer(self):
         for element in enumerate(self.__list_controller_commands):
@@ -111,6 +107,7 @@ class SerialManager(threading.Thread):
                 self.__serial_lock.acquire()
                 self.__serial_file.write(str(element[1]))
                 self.__serial_lock.release()
+                print element
                 time.sleep(100.0 / 1000.0)
         self.__list_controller_commands = []
 

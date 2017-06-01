@@ -24,10 +24,10 @@ class DataProviderServer(object):
         # We want only one client
         self.__socket.listen(1)
         while getattr(current_thread, 'is_running', True):
-            print >>sys.stderr, '[Data Provider] waiting for a connection', self.__server_address
+            #print >>sys.stderr, '[DataProvider] waiting for a connection', self.__server_address
             self.__connection, client_address = self.__socket.accept()
             try:
-                print >>sys.stderr, 'connection from', client_address
+                print >>sys.stderr, '[DataProvider] connection from', client_address
                 while getattr(current_thread, 'is_connected', True):
                     states = car_data_queue.get(True, None)
                     self.__connection.send(str(len(states)).ljust(1024))
@@ -36,3 +36,4 @@ class DataProviderServer(object):
                 current_thread.is_connected = True
             finally:
                 self.__connection.close()
+        self.__socket.close()
