@@ -2,17 +2,32 @@
 Main for Remote App
 """
 import sys
+import threading
+import numpy
 import cv2
-from PyQt4 import QtCore, QtGui
-import ControllerClient
-import StreamerClient
-import DataProviderClient
+import Queue
+from PyQt4 import QtGui, QtCore
 
-SPEED_UP_ACTION = "Speed increased"
-SPEED_DOWN_ACTION = "Speed decreased"
-BRAKE_ACTION = "Brake activated"
-GO_TO_LEFT_ACTION = "Go to Left"
-GO_TO_RIGHT_ACTION = "Go to Right"
+import CommunicatorClient
+import DataProviderClient
+import StreamerClient
+import Analyser
+
+FRAME_QUEUE = Queue.Queue(1)
+ANALYSED_FRAME_QUEUE = Queue.Queue(1)
+COMMANDS_QUEUE = Queue.Queue(1)
+USER_COMMANDS_QUEUE = Queue.Queue(1)
+AUTONOMOUS_STATES_QUEUE = Queue.Queue(1)
+CAR_DATA_QUEUE = Queue.Queue(1)
+CAR_STATES_QUEUE = Queue.Queue(1)
+
+CMD_GO_FORWARD = '1/1/'
+CMD_INCREASE_SPEED = '1/2/'
+CMD_DECREASE_SPEED = '2/'
+CMD_BRAKE = '3/'
+CMD_GO_LEFT = '4/'
+CMD_GO_RIGHT = '5/'
+CMD_GO_BACKWARD = '6/'
 
 try:
     #we want to use the same name form
@@ -69,19 +84,30 @@ class RemoteMain(object):
     def __init__(self, server_host):
         """
         All components needed for UI
-        * declare first in __init__ as None
+        * declared first in __init__ as None
         """
-        self.__controller = ControllerClient.ControllerClient(server_host)
-        self.__streamer = StreamerClient.StreamerClient(server_host)
-        self.__data_provider = DataProviderClient.DataProviderClient(server_host)
-        self.__streamer_image_thread = None
+        self.__host = server_host
+
+        self.__streamer_client = None
+        self.__communicator_client = None
+        self.__data_provider_client = None
+
+        self.__streamer_client_thread = None
+        self.__communicator_client_thread = None
+        self.__data_provider_client_thread = None
+
+        self.update_frame_timer = None
+        self.update_car_data_timer = None
+        self.superviser_timer = None
+
+        self.__acc_activated = False
 
         self.window_width = None
         self.window_height = None
-
         self.centralwidget = None
         self.grid_layout = None
         self.distance_buttons_layout = None
+        self.acc_activate_button = None
         self.increase_distance_button = None
         self.decrease_distance_button = None
         self.streamer_image_layout = None
@@ -102,16 +128,15 @@ class RemoteMain(object):
         self.command_label = None
         self.command_text = None
         self.statusbar = None
-        self.timer = None
-
-        self.__car_speed = 0
-        self.__car_preffered_speed = 0
-        self.__car_action = "Nothing"
 
     def setup_ui(self, main_window):
         """
         Setup UI components
         """
+        self.__streamer_client = StreamerClient.StreamerClient(self.__host)
+        self.__communicator_client = CommunicatorClient.CommunicatorClient(self.__host)
+        self.__data_provider_client = DataProviderClient.DataProviderClient(self.__host)
+
         main_window.setObjectName(FROM_UTF8("main_window"))
         main_window.resize(660, 700)
         main_window.keyPressEvent = self.key_press_event
@@ -122,6 +147,9 @@ class RemoteMain(object):
         self.grid_layout.setObjectName(FROM_UTF8("grid_layout"))
         self.distance_buttons_layout = QtGui.QVBoxLayout()
         self.distance_buttons_layout.setObjectName(FROM_UTF8("distance_buttons_layout"))
+        self.acc_activate_button = QtGui.QPushButton(self.centralwidget)
+        self.acc_activate_button.setObjectName(FROM_UTF8("acc_activate_button"))
+        self.distance_buttons_layout.addWidget(self.acc_activate_button)
         self.increase_distance_button = QtGui.QPushButton(self.centralwidget)
         self.increase_distance_button.setObjectName(FROM_UTF8("increase_distance_button"))
         self.distance_buttons_layout.addWidget(self.increase_distance_button)
@@ -192,9 +220,41 @@ class RemoteMain(object):
         self.statusbar.setObjectName(FROM_UTF8("statusbar"))
         main_window.setStatusBar(self.statusbar)
 
-        self.timer = QtCore.QTimer(self.centralwidget)
-        self.timer.timeout.connect(self.__update_frame)
-        self.timer.start(1)
+        # receive frames thread
+        self.__streamer_client_thread = \
+            threading.Thread(target=StreamerClient.StreamerClient.receive_stream, \
+            args=(self.__streamer_client, FRAME_QUEUE))
+        self.__streamer_client_thread.setDaemon(True)
+        self.__streamer_client_thread.start()
+
+        # send commands to car thread
+        self.__communicator_client_thread = \
+            threading.Thread(target=CommunicatorClient.CommunicatorClient.send_commands, \
+            args=(self.__communicator_client, COMMANDS_QUEUE))
+        self.__communicator_client_thread.setDaemon(True)
+        self.__communicator_client_thread.start()
+
+        # receive data about the car thread
+        self.__data_provider_client_thread = \
+            threading.Thread(target=DataProviderClient.DataProviderClient.receive_car_data, \
+            args=(self.__data_provider_client, CAR_DATA_QUEUE))
+        self.__data_provider_client_thread.setDaemon(True)
+        self.__data_provider_client_thread.start()
+
+        # update the GUI control to show frames thread
+        self.update_frame_timer = QtCore.QTimer(self.centralwidget)
+        self.update_frame_timer.timeout.connect(self.__update_frame)
+        self.update_frame_timer.start(10)
+
+        # update car data thread
+        self.update_car_data_timer = QtCore.QTimer(self.centralwidget)
+        self.update_car_data_timer.timeout.connect(self.__update_car_data)
+        self.update_car_data_timer.start(200)
+
+        # supervise the user settings and sync entire app thread
+        self.superviser_timer = QtCore.QTimer(self.centralwidget)
+        self.superviser_timer.timeout.connect(self.__superviser_thread)
+        self.superviser_timer.start(100)
 
         self.window_width = self.streamer_image_view.frameSize().width()
         self.window_height = self.streamer_image_view.frameSize().height()
@@ -202,10 +262,9 @@ class RemoteMain(object):
         self.speed_up_button.clicked.connect(self.__speed_up_button_clicked)
         self.speed_down_button.clicked.connect(self.__speed_down_button_clicked)
         self.brake_button.clicked.connect(self.__brake_button_clicked)
-
-        self.__streamer.start()
-        self.__controller.start()
-        self.__data_provider.start()
+        self.increase_distance_button.clicked.connect(self.__increase_distance_btn_clicked)
+        self.decrease_distance_button.clicked.connect(self.__decrease_distance_btn_clicked)
+        self.acc_activate_button.clicked.connect(self.__acc_activate_button_clicked)
 
         self.retranslate_ui(main_window)
         QtCore.QMetaObject.connectSlotsByName(main_window)
@@ -216,6 +275,7 @@ class RemoteMain(object):
         """
         main_window.setWindowTitle(\
             _translate("main_window", "Adaptive Cruise Control - RS Lang", None))
+        self.acc_activate_button.setText(_translate("main_window", "ACC", None))
         self.increase_distance_button.setText(_translate("main_window", "Increase Distance", None))
         self.decrease_distance_button.setText(_translate("main_window", "Decrease Distance", None))
         self.speed_up_button.setText(_translate("main_window", "Speed Up", None))
@@ -227,51 +287,59 @@ class RemoteMain(object):
         self.detection_label.setText(_translate("main_window", "Detection", None))
         self.command_label.setText(_translate("main_window", "Command", None))
 
+    def __acc_activate_button_clicked(self):
+        self.__acc_activated = not self.__acc_activated
+
     def __speed_up_button_clicked(self):
-        self.__car_action = SPEED_UP_ACTION
-        self.__send_command('SPEED_UP')
+        print 'increase'
 
     def __speed_down_button_clicked(self):
-        self.__car_action = SPEED_DOWN_ACTION
-        self.__send_command('SPEED_DOWN')
+        print 'slow down'
 
     def __brake_button_clicked(self):
-        self.__car_action = BRAKE_ACTION
-        self.__car_speed = 0
-        self.__send_command('BRAKE')
+        print 'brake'
 
-    def __send_command(self, command_type):
-        if command_type == 'SPEED_UP':
-            self.__controller.execute_command('SPEED_UP')
-        elif command_type == 'SPEED_DOWN':
-            self.__controller.execute_command('SPEED_DOWN')
-        elif command_type == 'BRAKE':
-            self.__controller.execute_command('BRAKE')
+    def __increase_distance_btn_clicked(self):
+        print 'increase'
+
+    def __decrease_distance_btn_clicked(self):
+        print 'decrease'
 
     def key_press_event(self, event):
         """
         key press
         """
         key = event.key()
-        if chr(key) == 'W':
-            self.__controller.execute_command('SPEED_UP')
-        elif chr(key) == 'A':
-            self.__controller.execute_command('GO_LEFT')
-        elif chr(key) == 'S':
-            self.__controller.execute_command('SPEED_DOWN')
-        elif chr(key) == 'D':
-            self.__controller.execute_command('GO_RIGHT')
-        elif chr(key) == 'M':
-            self.__controller.execute_command('BRAKE')
-        elif chr(key) == 'R':
-            self.__controller.execute_command('REAR')
-        elif chr(key) == 'I':
-            self.__controller.execute_command('START_ANALYZE')
-        elif chr(key) == 'O':
-            self.__controller.execute_command('STOP_ANALYZE')
+
+        if key == QtCore.Qt.Key_Escape:
+            sys.exit()
+        elif key == QtCore.Qt.Key_W:
+            print 'W'
+            COMMANDS_QUEUE.put(CMD_INCREASE_SPEED, True, None)
+        elif key == QtCore.Qt.Key_A:
+            print 'A'
+            COMMANDS_QUEUE.put(CMD_GO_LEFT, True, None)
+        elif key == QtCore.Qt.Key_S:
+            print 'S'
+            COMMANDS_QUEUE.put(CMD_DECREASE_SPEED, True, None)
+        elif key == QtCore.Qt.Key_D:
+            print 'D'
+            COMMANDS_QUEUE.put(CMD_GO_RIGHT, True, None)
+        elif key == QtCore.Qt.Key_M:
+            print 'M'
+            COMMANDS_QUEUE.put(CMD_BRAKE, True, None)
+        elif key == QtCore.Qt.Key_R:
+            print 'R'
+            COMMANDS_QUEUE.put(CMD_GO_BACKWARD, True, None)
+        elif key == QtCore.Qt.Key_I:
+            print 'I'
+        elif key == QtCore.Qt.Key_O:
+            print 'O'
 
     def __update_frame(self):
-        cv_image = self.__streamer.get_frame()
+        string_data = FRAME_QUEUE.get(True, None)
+        data = numpy.fromstring(string_data, dtype='uint8')
+        cv_image = cv2.imdecode(data, 1)
         if cv_image is not None:
             img_height, img_width, img_colors = cv_image.shape
             scale_w = float(self.window_width) / float(img_width)
@@ -288,36 +356,34 @@ class RemoteMain(object):
             bpl = bpc * width
             image = QtGui.QImage(cv_image.data, width, height, bpl, QtGui.QImage.Format_RGB888)
             self.streamer_image_view.set_image(image)
+        FRAME_QUEUE.task_done()
 
-        car_data = self.__data_provider.get_car_data()
-        if car_data is not None:
-            car_data = car_data.split(';')
-            for elem in car_data:
-                current_state = elem.split(',')
-                if len(current_state) > 1:
-                    if current_state[0] == 'ACTION':
-                        self.__car_action = current_state[1]
-                    elif current_state[0] == 'SPEED':
-                        self.__car_speed = current_state[1]
+    def __update_car_data(self):
+        car_data = CAR_DATA_QUEUE.get(True, None)
+        car_data = car_data.split(';')
+        for elem in car_data:
+            current_state = elem.split(',')
+            if len(current_state) > 1:
+                if current_state[0] == 'ACTION':
+                    self.command_text.setText(_translate("main_window", \
+                        str(current_state[1]), None))
+                elif current_state[0] == 'SPEED':
+                    self.speed_text.setText(_translate("main_window", \
+                        str(current_state[1]), None))
+        CAR_DATA_QUEUE.task_done()
 
-        self.speed_text.setText(_translate("main_window", str(self.__car_speed), None))
-        self.command_text.setText(_translate("main_window", self.__car_action, None))
+    def __superviser_thread(self):
+        if bool(self.__acc_activated) is False:
+            self.acc_activate_button.setStyleSheet("background-color: red")
+        else:
+            self.acc_activate_button.setStyleSheet("background-color: green")
 
     def close_event(self, event):
         """
         close event
         """
-        print event
-        self.__controller.execute_command('CLOSE')
-        self.__streamer.stop()
-        self.__controller.stop()
-        self.__data_provider.stop()
-        self.__streamer.join()
-        print 'Streamer thread closed'
-        self.__controller.join()
-        print 'Controller thread closed'
-        self.__data_provider.join()
-        print 'Data Provider closed'
+        self.update_frame_timer.stop()
+        event.accept()
 
 if __name__ == "__main__":
     MAIN_APP = QtGui.QApplication(sys.argv)

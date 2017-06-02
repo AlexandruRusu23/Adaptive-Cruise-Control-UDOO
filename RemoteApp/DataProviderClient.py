@@ -4,60 +4,28 @@ data provider client
 import threading
 import socket
 
-class DataProviderClient(threading.Thread):
+class DataProviderClient(object):
     """
     Streamer Client Class
     """
-    def __init__(self, hostname='192.168.0.185', port=18089):
-        threading.Thread.__init__(self)
-        self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    def __init__(self, hostname, port=18089):
+        self.__socket = None
         self.__server_address = (hostname, port)
-        self.__is_running = False
-        self.__is_running_lock = threading.Lock()
-        self.__car_data = None
-        self.__car_data_lock = threading.Lock()
 
-    def run(self):
-        self.__is_running = True
+    def receive_car_data(self, car_data_queue):
+        """
+        Receive the data about the car
+        """
+        current_thread = threading.currentThread()
+        self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.__socket.connect(self.__server_address)
-        while True:
-            length = self.recvall(self.__socket, 1024)
-            if length is None:
-                break
-            string_data = self.recvall(self.__socket, int(length))
-            if string_data is None:
-                break
-
-            self.__car_data_lock.acquire()
-            self.__car_data = string_data
-            self.__car_data_lock.release()
-
-            self.__is_running_lock.acquire()
-            condition = self.__is_running
-            self.__is_running_lock.release()
-            if bool(condition) is False:
-                break
-
+        while getattr(current_thread, 'is_running', True):
+            length = self.__recvall(self.__socket, 1024)
+            string_data = self.__recvall(self.__socket, int(length))
+            car_data_queue.put(string_data, True, None)
         self.__socket.close()
 
-    def stop(self):
-        """
-        stop the data provider client
-        """
-        self.__is_running_lock.acquire()
-        self.__is_running = False
-        self.__is_running_lock.release()
-
-    def get_car_data(self):
-        """
-        get the current data about the car
-        """
-        self.__car_data_lock.acquire()
-        output = self.__car_data
-        self.__car_data_lock.release()
-        return output
-
-    def recvall(self, sock, count):
+    def __recvall(self, sock, count):
         """
         receive blocks of count size
         """

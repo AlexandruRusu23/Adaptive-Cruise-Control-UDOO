@@ -133,4 +133,5 @@ class SerialManager(threading.Thread):
         output = ''
         for key, value in output_dict.items():
             output = output + str(key) + ',' + str(value) + ';'
+        print output
         return output
