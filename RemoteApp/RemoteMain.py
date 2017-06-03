@@ -91,10 +91,12 @@ class RemoteMain(object):
         self.__streamer_client = None
         self.__communicator_client = None
         self.__data_provider_client = None
+        self.__analyser = None
 
         self.__streamer_client_thread = None
         self.__communicator_client_thread = None
         self.__data_provider_client_thread = None
+        self.__analyser_thread = None
 
         self.update_frame_timer = None
         self.update_car_data_timer = None
@@ -136,6 +138,7 @@ class RemoteMain(object):
         self.__streamer_client = StreamerClient.StreamerClient(self.__host)
         self.__communicator_client = CommunicatorClient.CommunicatorClient(self.__host)
         self.__data_provider_client = DataProviderClient.DataProviderClient(self.__host)
+        self.__analyser = Analyser.Analyser()
 
         main_window.setObjectName(FROM_UTF8("main_window"))
         main_window.resize(660, 700)
@@ -241,13 +244,21 @@ class RemoteMain(object):
         self.__data_provider_client_thread.setDaemon(True)
         self.__data_provider_client_thread.start()
 
-        # update the GUI control to show frames thread
-        self.update_frame_timer = QtCore.QTimer(self.centralwidget)
+        # analyse every frame and take decisions thread
+        self.__analyser_thread = \
+            threading.Thread(target=Analyser.Analyser.analyse, \
+            args=(self.__analyser, FRAME_QUEUE, ANALYSED_FRAME_QUEUE, AUTONOMOUS_STATES_QUEUE, \
+            COMMANDS_QUEUE, CAR_STATES_QUEUE,))
+        self.__analyser_thread.setDaemon(True)
+        self.__analyser_thread.start()
+
+        # update frames thread
+        self.update_frame_timer = QtCore.QTimer(self.streamer_image_layout)
         self.update_frame_timer.timeout.connect(self.__update_frame)
         self.update_frame_timer.start(10)
 
         # update car data thread
-        self.update_car_data_timer = QtCore.QTimer(self.centralwidget)
+        self.update_car_data_timer = QtCore.QTimer(self.states_layout)
         self.update_car_data_timer.timeout.connect(self.__update_car_data)
         self.update_car_data_timer.start(200)
 
@@ -337,7 +348,7 @@ class RemoteMain(object):
             print 'O'
 
     def __update_frame(self):
-        string_data = FRAME_QUEUE.get(True, None)
+        string_data = ANALYSED_FRAME_QUEUE.get(True, None)
         data = numpy.fromstring(string_data, dtype='uint8')
         cv_image = cv2.imdecode(data, 1)
         if cv_image is not None:
@@ -356,10 +367,10 @@ class RemoteMain(object):
             bpl = bpc * width
             image = QtGui.QImage(cv_image.data, width, height, bpl, QtGui.QImage.Format_RGB888)
             self.streamer_image_view.set_image(image)
-        FRAME_QUEUE.task_done()
+        ANALYSED_FRAME_QUEUE.task_done()
 
     def __update_car_data(self):
-        car_data = CAR_DATA_QUEUE.get(True, None)
+        car_data = CAR_DATA_QUEUE.get()
         car_data = car_data.split(';')
         for elem in car_data:
             current_state = elem.split(',')
@@ -383,6 +394,8 @@ class RemoteMain(object):
         close event
         """
         self.update_frame_timer.stop()
+        self.update_car_data_timer.stop()
+        self.superviser_timer.stop()
         event.accept()
 
 if __name__ == "__main__":

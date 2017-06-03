@@ -63,8 +63,6 @@ class SerialManager(threading.Thread):
         self.__serial_file.close()
         self.__serial_lock.release()
 
-        print '[SerialManager] Reader Thread stopped.'
-
     def stop(self):
         """
         stop the SerialManager
@@ -107,7 +105,6 @@ class SerialManager(threading.Thread):
                 self.__serial_lock.acquire()
                 self.__serial_file.write(str(element[1]))
                 self.__serial_lock.release()
-                print element
                 time.sleep(100.0 / 1000.0)
         self.__list_controller_commands = []
 
@@ -133,5 +130,4 @@ class SerialManager(threading.Thread):
         output = ''
         for key, value in output_dict.items():
             output = output + str(key) + ',' + str(value) + ';'
-        print output
         return output

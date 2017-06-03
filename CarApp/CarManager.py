@@ -103,7 +103,7 @@ class CarManager(threading.Thread):
         self.__process_user_commands_thread.setDaemon(True)
         self.__process_user_commands_thread.start()
 
-        print 'am startat tot'
+        print '[CarManager] Am startat tot'
 
         while True:
             self.__is_running_lock.acquire()

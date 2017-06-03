@@ -50,10 +50,8 @@ class Controller(object):
             else: #computer
                 self.__serial_manager = SerialManager.SerialManager(self.__board_name[0], 9600)
         else:
-            print '[Controller] No device to connect to'
             return False
 
-        #print '[Controller] Serial Manager connected to', self.__board_name[0]
         self.__serial_connected = True
         return True
 

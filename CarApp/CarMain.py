@@ -49,8 +49,11 @@ if __name__ == '__main__':
     try:
         CAR_MAIN = CarMain()
         CAR_MAIN.start()
-        while 'Exit' not in str(input('[CarMain] $ ')):
-            time.sleep(1)
+        while True:
+            try:
+                time.sleep(1)
+            except KeyboardInterrupt:
+                break
         CAR_MAIN.stop()
         CAR_MAIN.join()
     except KeyboardInterrupt:

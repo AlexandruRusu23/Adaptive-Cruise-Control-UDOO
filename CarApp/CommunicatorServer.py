@@ -27,10 +27,7 @@ class CommunicatorServer(object):
         self.__socket.listen(1)
         # Listen to infinite connection if Client disconnect
         while getattr(current_thread, 'is_running', True):
-            print >>sys.stderr, \
-               '[Comunicator Server] waiting for a connection', self.__server_address
             self.__connection, client_address = self.__socket.accept()
-            print '[Comunicator Server] connection from', client_address
             try:
                 while getattr(current_thread, 'is_connected', True):
                     data = self.__connection.recv(1024) #valid

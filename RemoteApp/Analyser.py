@@ -64,9 +64,10 @@ class Analyser(object):
 
         self.__lines_coords_list = []
 
-    def analyse(self, frame_queue, autonomous_states_queue, commands_queue, analysed_frame_queue):
+    def analyse(self, frame_queue, analysed_frame_queue, autonomous_states_queue, \
+    commands_queue, car_states_queue):
         """
-        get the current frame from FRAME_QUEUE of CarManager and analyse
+        get the current frame from FRAME_QUEUE and analyse
         """
         current_thread = threading.currentThread()
         self.__command_timer = time.time()
@@ -81,11 +82,12 @@ class Analyser(object):
             self.__current_frame = cv2.imdecode(frame, 1)
 
             if getattr(current_thread, 'is_analysing', True):
-                #self.__car_detection(commands_queue, autonomous_states_queue)
+                self.__car_detection(commands_queue, autonomous_states_queue)
                 self.__lane_assist(commands_queue)
 
             self.__draw_car_orientation()
             self.__draw_fps()
+
             result, encrypted_image = \
                 cv2.imencode('.jpg', self.__current_frame, self.__encode_parameter)
 
@@ -93,8 +95,9 @@ class Analyser(object):
                 break
 
             analysed_frame = numpy.array(encrypted_image)
-            analysed_frame_queue.put(analysed_frame.tostring())
+            analysed_frame_queue.put(str(analysed_frame.tostring()), True, None)
             frame_queue.task_done()
+
             self.__fps_counter = self.__fps_counter + 1
 
             if time.time() - self.__fps_timer > 1:
@@ -102,7 +105,6 @@ class Analyser(object):
                 self.__fps_counter = 0
                 self.__fps_timer = time.time()
 
-            #autonomous_states_queue.put()
     def __draw_fps(self):
         font = cv2.FONT_HERSHEY_SIMPLEX
         cv2.putText(self.__current_frame, str(self.__frame_fps), \
