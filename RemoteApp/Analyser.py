@@ -7,9 +7,10 @@ import cv2
 import numpy as np
 import numpy.matlib
 
+import Queue
 import DetectChars
 import DetectPlates
-import PossiblePlate
+import RemoteMain as GLOBAL
 
 SCALAR_BLACK = (0.0, 0.0, 0.0)
 SCALAR_WHITE = (255.0, 255.0, 255.0)
@@ -64,6 +65,12 @@ class Analyser(object):
 
         self.__lines_coords_list = []
 
+        self.__cruise_watch_area = 0
+        self.__distance_to_car = 0
+        self.__plate_coords = []
+        self.__cruise_speed = 0
+        self.__cruise_preffered_speed = 0
+
     def analyse(self, frame_queue, analysed_frame_queue, autonomous_states_queue, \
     commands_queue, car_states_queue):
         """
@@ -84,7 +91,10 @@ class Analyser(object):
             if getattr(current_thread, 'is_analysing', True):
                 self.__car_detection(commands_queue, autonomous_states_queue)
                 self.__lane_assist(commands_queue)
+                self.__draw_rect_around_plate(self.__current_frame)
+                self.__draw_distance_to_car()
 
+            self.__get_cruise_states_data(car_states_queue)
             self.__draw_car_orientation()
             self.__draw_fps()
 
@@ -110,32 +120,84 @@ class Analyser(object):
         cv2.putText(self.__current_frame, str(self.__frame_fps), \
             (0, 21), font, 1, (0, 255, 255), 2, cv2.LINE_AA)
 
-    def __draw_rect_around_plate(self, current_scene, lic_plate):
-        p2f_rect_points = cv2.boxPoints(lic_plate.rrLocationOfPlateInScene)
+    def __get_cruise_states_data(self, car_states_queue):
+        try:
+            car_states = car_states_queue.get(False)
+        except Queue.Empty:
+            return
+        if car_states:
+            car_states = car_states.split(';')
+            for elem in car_states:
+                current_state = elem.split(',')
+                if len(current_state) > 1:
+                    if GLOBAL.CSQ_CRUISE_DISTANCE in current_state[0]:
+                        self.__cruise_watch_area = int(current_state[1])
+                    elif GLOBAL.CSQ_CRUISE_SPEED in current_state[0]:
+                        self.__cruise_speed = int(current_state[1])
+                    elif GLOBAL.CSQ_CRUISE_PREFFERED_SPEED in current_state[0]:
+                        self.__cruise_preffered_speed = int(current_state[1])
+        car_states_queue.task_done()
 
-        cv2.line(current_scene, tuple(p2f_rect_points[0]), \
-            tuple(p2f_rect_points[1]), SCALAR_RED, 2)
-        cv2.line(current_scene, tuple(p2f_rect_points[1]), \
-            tuple(p2f_rect_points[2]), SCALAR_RED, 2)
-        cv2.line(current_scene, tuple(p2f_rect_points[2]), \
-            tuple(p2f_rect_points[3]), SCALAR_RED, 2)
-        cv2.line(current_scene, tuple(p2f_rect_points[3]), \
-            tuple(p2f_rect_points[0]), SCALAR_RED, 2)
+    def __draw_rect_around_plate(self, current_scene):
+        if len(self.__plate_coords) > 3:
+            if self.__distance_to_car < 100:
+                cv2.line(current_scene, tuple(self.__plate_coords[0]), \
+                    tuple(self.__plate_coords[1]), SCALAR_RED, 2)
+                cv2.line(current_scene, tuple(self.__plate_coords[1]), \
+                    tuple(self.__plate_coords[2]), SCALAR_RED, 2)
+                cv2.line(current_scene, tuple(self.__plate_coords[2]), \
+                    tuple(self.__plate_coords[3]), SCALAR_RED, 2)
+                cv2.line(current_scene, tuple(self.__plate_coords[3]), \
+                    tuple(self.__plate_coords[0]), SCALAR_RED, 2)
 
-        return p2f_rect_points
+    def __draw_distance_to_car(self):
+        if self.__distance_to_car < 100:
+            frame_shape = self.__current_frame.shape
+            distance_position = (2 * frame_shape[1] / 100, 95 * frame_shape[0] / 100)
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            cv2.putText(self.__current_frame, 'Distance:' + str(self.__distance_to_car) + 'cm', \
+                distance_position, font, 1, (0, 255, 255), 2, cv2.LINE_AA)
 
-    def __draw_distance_to_car(self, lic_plate):
-        height, width, channels = self.__current_frame.shape
-        p2f_rect_points = cv2.boxPoints(lic_plate.rrLocationOfPlateInScene)
-        distance_to_car = height - p2f_rect_points[3][1]
-        distance_to_car = float("{0:.2f}".format(distance_to_car))
-        distance_to_car = distance_to_car / 6.0
-        distance_position = (2 * width / 100, 95 * height / 100)
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        cv2.putText(self.__current_frame, 'Distance:' + str(distance_to_car) + 'cm', \
-            distance_position, font, 1, (0, 255, 255), 2, cv2.LINE_AA)
+    def __take_cruise_decision(self, commands_queue):
+        dist_padding = 5
+        low_thresh_area = self.__cruise_watch_area * 5
+        high_thresh_area = self.__cruise_watch_area * 5 + dist_padding
+        # scenarious when you have to decrease the speed
+        if self.__cruise_speed > self.__cruise_preffered_speed:
+            try:
+                commands_queue.put(GLOBAL.CMD_DECREASE_SPEED, False)
+            except Queue.Full:
+                pass
+
+        if self.__distance_to_car < high_thresh_area:
+            if self.__distance_to_car < low_thresh_area:
+                try:
+                    commands_queue.put(GLOBAL.CMD_BRAKE, False)
+                except Queue.Full:
+                    pass
+            else:
+                try:
+                    commands_queue.put(GLOBAL.CMD_DECREASE_SPEED, False)
+                except Queue.Full:
+                    pass
+        # scenarious when you have to increase the speed
+        if self.__distance_to_car > (high_thresh_area + dist_padding):
+            if self.__cruise_speed < self.__cruise_preffered_speed:
+                try:
+                    commands_queue.put(GLOBAL.CMD_INCREASE_SPEED, False)
+                except Queue.Full:
+                    pass
+
+    def __populate_autonomous_states(self, autonomous_states_queue):
+        print 'hello'
 
     def __car_detection(self, commands_queue, autonomous_states_queue):
+        """
+        Detect the possible car in front of our car
+        Store useful data states
+        Take decisions and populate the autonomous states queue
+        with taken decisions
+        """
         list_of_possible_plates = DetectPlates.detectPlatesInScene(self.__current_frame)
 
         list_of_possible_plates = DetectChars.detectCharsInPlates(list_of_possible_plates)
@@ -144,9 +206,16 @@ class Analyser(object):
             reverse=True)
 
         if len(list_of_possible_plates) > 0:
-            plate_points = lic_plate = list_of_possible_plates[0]
-            self.__draw_distance_to_car(lic_plate)
-            self.__draw_rect_around_plate(self.__current_frame, lic_plate)
+            lic_plate = list_of_possible_plates[0]
+            frame_shape = self.__current_frame.shape
+            self.__plate_coords = cv2.boxPoints(lic_plate.rrLocationOfPlateInScene)
+            self.__distance_to_car = frame_shape[0] - self.__plate_coords[3][1]
+            self.__distance_to_car = self.__distance_to_car / 6.0
+            self.__distance_to_car = float("{0:.2f}".format(self.__distance_to_car))
+            self.__take_cruise_decision(commands_queue)
+            #self.__populate_autonomous_states(autonomous_states_queue)
+        else:
+            self.__distance_to_car = 1000
 
     def __gaussian_blur(self, img, kernel_size=3):
         """Applies a Gaussian Noise kernel"""
@@ -301,40 +370,37 @@ class Analyser(object):
         return line_img
 
     def __draw_car_orientation(self):
+        if self.__cruise_watch_area == 0:
+            return
+
         height, width, channels = self.__current_frame.shape
 
-        pick_x_coord = width / 2
-        pick_y_coord = 50 * height / 100
-        pick_width = 20 * width / 100
-        pick_height = 15 * height / 100
-        base_width = 20 * width / 100
-        base_height = 30 * height / 100
+        tile_bottom_x_coord = width / 2
+        tile_bottom_y_coord = height
+        tile_width = 25 * width / 100
+        tile_height = 25
+        tile_padding = 5
 
-        car_arrow_vertex = []
-        # varf sageata
-        car_arrow_vertex.append([pick_x_coord, pick_y_coord])
-        #colt dreapta triungi
-        car_arrow_vertex.append([pick_x_coord + pick_width, pick_y_coord + pick_height])
-        #colt dreapta-sus patrat
-        car_arrow_vertex.append([pick_x_coord + base_width / 2, pick_y_coord + pick_height])
-        #colt dreapta-jos patrat
-        car_arrow_vertex.append([pick_x_coord + base_width, \
-            pick_y_coord + pick_height + base_height])
-        #colt stanga-jos patrat
-        car_arrow_vertex.append([pick_x_coord - base_width, \
-            pick_y_coord + pick_height + base_height])
-        #colt stanga-sus patrat
-        car_arrow_vertex.append([pick_x_coord - base_width / 2, pick_y_coord + pick_height])
-        #colt stanga triunghi
-        car_arrow_vertex.append([pick_x_coord - pick_width, pick_y_coord + pick_height])
+        for contor in range(0, self.__cruise_watch_area):
+            car_cruise_area_vertex = []
 
-        overlay = self.__current_frame.copy()
+            car_cruise_area_vertex.append([tile_bottom_x_coord + tile_width, tile_bottom_y_coord])
+            car_cruise_area_vertex.append([tile_bottom_x_coord - tile_width, tile_bottom_y_coord])
 
-        pts = np.array(car_arrow_vertex, np.int32)
-        pts = pts.reshape((-1, 1, 2))
-        cv2.fillConvexPoly(overlay, pts, (0, 255, 255))
-        alpha = 0.2
-        cv2.addWeighted(overlay, alpha, self.__current_frame, 1 - alpha, 0, self.__current_frame)
+            tile_bottom_y_coord = tile_bottom_y_coord - tile_height
+            tile_width = 80 * tile_width / 100
+
+            car_cruise_area_vertex.append([tile_bottom_x_coord - tile_width, tile_bottom_y_coord])
+            car_cruise_area_vertex.append([tile_bottom_x_coord + tile_width, tile_bottom_y_coord])
+
+            overlay = self.__current_frame.copy()
+            pts = np.array(car_cruise_area_vertex, np.int32)
+            pts = pts.reshape((-1, 1, 2))
+            cv2.fillConvexPoly(overlay, pts, (0, 200, 0))
+            alpha = 0.5
+            cv2.addWeighted(overlay, alpha, self.__current_frame, 1-alpha, 0, self.__current_frame)
+
+            tile_bottom_y_coord = tile_bottom_y_coord - tile_padding
 
     def __lane_assist(self, commands_queue):
         grey = self.__grayscale(self.__current_frame)
@@ -359,24 +425,5 @@ class Analyser(object):
         cv2.addWeighted(self.__current_frame, ALPHA, line_image, BETA, GAMMA, final_image)
 
         final_image2 = final_image.astype('uint8')
-
-        #height, width, channels = self.__current_frame.shape
-
-        # if time.time() - self.__command_timer > 0.1:
-        #     if len(self.__lines_coords_list) > 3:
-        #         left_median_x = \
-        #             (self.__lines_coords_list[0][0] + self.__lines_coords_list[1][0]) / 2
-        #         right_median_x = \
-        #             (self.__lines_coords_list[2][0] + self.__lines_coords_list[3][0]) / 2
-        #         if left_median_x > 30 * width / 100:
-        #             commands_queue.put('5/')
-        #             self.__go_forward = False
-        #         elif right_median_x < 70 * width / 100:
-        #             commands_queue.put('4/')
-        #             self.__go_forward = False
-        #         else:
-        #             if bool(self.__go_forward) is False:
-        #                 commands_queue.put('1/1/')
-        #                 self.__go_forward = True
 
         self.__current_frame = final_image2

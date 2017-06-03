@@ -21,8 +21,10 @@ class DataProviderClient(object):
         self.__socket.connect(self.__server_address)
         while getattr(current_thread, 'is_running', True):
             length = self.__recvall(self.__socket, 1024)
-            string_data = self.__recvall(self.__socket, int(length))
-            car_data_queue.put(string_data, True, None)
+            if length is not None:
+                string_data = self.__recvall(self.__socket, int(length))
+                if string_data is not None:
+                    car_data_queue.put(string_data, True, None)
         self.__socket.close()
 
     def __recvall(self, sock, count):

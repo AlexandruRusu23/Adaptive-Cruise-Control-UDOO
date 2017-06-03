@@ -6,9 +6,9 @@
 #define RIGHT_FRONT_MOTOR         3
 
 #define MAX_SPEED                 255
-#define MIN_SPEED                 120
+#define MIN_SPEED                 100
 #define MAX_TRESHOLD              250
-#define MIN_TRESHOLD              120
+#define MIN_TRESHOLD              100
 #define SPEED_UNIT                10
 
 #define TURNING_LEFT              2
@@ -100,6 +100,7 @@ long getSerial()
 
 void PrintCarData()
 {
+  Serial.flush();
   Serial.println("CAR_DATA");
   Serial.print("SPEED: ");
   if (turning == DISABLED)

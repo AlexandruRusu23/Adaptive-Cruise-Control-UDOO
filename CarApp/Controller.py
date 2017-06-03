@@ -2,6 +2,8 @@
 Controller module
 """
 import os
+import time
+import Queue
 import socket
 import threading
 import SerialManager
@@ -94,7 +96,11 @@ class Controller(object):
             self.__start_serial_manager()
 
         while getattr(current_thread, 'is_running', True):
-            car_data_queue.put(self.__serial_manager.get_car_data())
+            try:
+                car_data_queue.put(self.__serial_manager.get_car_data(), False)
+            except Queue.Full:
+                pass
+            time.sleep(200.0 / 1000.0)
 
         self.__stop_serial_manager()
 

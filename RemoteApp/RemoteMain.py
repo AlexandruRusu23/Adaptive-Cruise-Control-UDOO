@@ -21,6 +21,7 @@ AUTONOMOUS_STATES_QUEUE = Queue.Queue(1)
 CAR_DATA_QUEUE = Queue.Queue(1)
 CAR_STATES_QUEUE = Queue.Queue(1)
 
+# string resources
 CMD_GO_FORWARD = '1/1/'
 CMD_INCREASE_SPEED = '1/2/'
 CMD_DECREASE_SPEED = '2/'
@@ -28,6 +29,10 @@ CMD_BRAKE = '3/'
 CMD_GO_LEFT = '4/'
 CMD_GO_RIGHT = '5/'
 CMD_GO_BACKWARD = '6/'
+
+CSQ_CRUISE_DISTANCE = 'CRUISE_DISTANCE'
+CSQ_CRUISE_SPEED = 'CRUISE_SPEED'
+CSQ_CRUISE_PREFFERED_SPEED = 'CRUISE_PREF_SPEED'
 
 try:
     #we want to use the same name form
@@ -102,7 +107,12 @@ class RemoteMain(object):
         self.update_car_data_timer = None
         self.superviser_timer = None
 
+        self.__current_command = ''
+
         self.__acc_activated = False
+        self.__cruise_watch_area = 0
+        self.__cruise_speed = 0
+        self.__cruise_preffered_speed = 0
 
         self.window_width = None
         self.window_height = None
@@ -251,6 +261,7 @@ class RemoteMain(object):
             COMMANDS_QUEUE, CAR_STATES_QUEUE,))
         self.__analyser_thread.setDaemon(True)
         self.__analyser_thread.start()
+        self.__analyser_thread.is_analysing = self.__acc_activated
 
         # update frames thread
         self.update_frame_timer = QtCore.QTimer(self.streamer_image_layout)
@@ -300,21 +311,36 @@ class RemoteMain(object):
 
     def __acc_activate_button_clicked(self):
         self.__acc_activated = not self.__acc_activated
+        self.__analyser_thread.is_analysing = self.__acc_activated
 
     def __speed_up_button_clicked(self):
-        print 'increase'
+        if self.__cruise_preffered_speed < 250:
+            if self.__cruise_preffered_speed < 50:
+                self.__cruise_preffered_speed = 50
+            else:
+                self.__cruise_preffered_speed = self.__cruise_preffered_speed + 10
 
     def __speed_down_button_clicked(self):
-        print 'slow down'
+        if self.__cruise_speed == 0:
+            self.__cruise_preffered_speed = 0
+        if self.__cruise_preffered_speed > 50:
+            self.__cruise_preffered_speed = self.__cruise_preffered_speed - 10
+        else:
+            self.__cruise_preffered_speed = 0
 
     def __brake_button_clicked(self):
+        self.__cruise_preffered_speed = 0
         print 'brake'
 
     def __increase_distance_btn_clicked(self):
-        print 'increase'
+        if self.__cruise_watch_area < 4:
+            self.__cruise_watch_area = self.__cruise_watch_area + 1
+        print 'increase ' + str(self.__cruise_watch_area)
 
     def __decrease_distance_btn_clicked(self):
-        print 'decrease'
+        if self.__cruise_watch_area > 0:
+            self.__cruise_watch_area = self.__cruise_watch_area - 1
+        print 'decrease ' + str(self.__cruise_watch_area)
 
     def key_press_event(self, event):
         """
@@ -370,17 +396,18 @@ class RemoteMain(object):
         ANALYSED_FRAME_QUEUE.task_done()
 
     def __update_car_data(self):
-        car_data = CAR_DATA_QUEUE.get()
+        try:
+            car_data = CAR_DATA_QUEUE.get(False)
+        except Queue.Empty:
+            return
         car_data = car_data.split(';')
         for elem in car_data:
             current_state = elem.split(',')
             if len(current_state) > 1:
-                if current_state[0] == 'ACTION':
-                    self.command_text.setText(_translate("main_window", \
-                        str(current_state[1]), None))
-                elif current_state[0] == 'SPEED':
-                    self.speed_text.setText(_translate("main_window", \
-                        str(current_state[1]), None))
+                if 'ACTION' in current_state[0]:
+                    self.__current_command = str(current_state[1])
+                elif 'SPEED' in current_state[0]:
+                    self.__cruise_speed = int(current_state[1])
         CAR_DATA_QUEUE.task_done()
 
     def __superviser_thread(self):
@@ -388,6 +415,25 @@ class RemoteMain(object):
             self.acc_activate_button.setStyleSheet("background-color: red")
         else:
             self.acc_activate_button.setStyleSheet("background-color: green")
+
+        self.speed_text.setText(_translate("main_window", str(self.__cruise_speed), None))
+        self.command_text.setText(_translate("main_window", str(self.__current_command), None))
+        self.preferred_speed_text.setText(_translate("main_window", \
+            str(self.__cruise_preffered_speed), None))
+
+        cruise_distance = self.__cruise_watch_area * 5
+        self.cruise_distance_text.setText(_translate("main_window", \
+            str(cruise_distance) + ' cm', None))
+
+        preffered_speed = CSQ_CRUISE_PREFFERED_SPEED +','+ str(self.__cruise_preffered_speed) + ';'
+        speed = CSQ_CRUISE_SPEED +','+ str(self.__cruise_speed) + ';'
+        speed = speed + preffered_speed
+        cruise_distance = CSQ_CRUISE_DISTANCE + ',' + str(self.__cruise_watch_area) + ';'
+        cruise_distance = cruise_distance + speed
+        try:
+            CAR_STATES_QUEUE.put(cruise_distance, False)
+        except Queue.Full:
+            pass
 
     def close_event(self, event):
         """
