@@ -22,9 +22,9 @@ showSteps = False
 
 # Region-of-interest vertices
 # We want a trapezoid shape, with bottom edge at the bottom of the image
-TRAPEZOID_BOTTOM_WIDTH = 1.2
+TRAPEZOID_BOTTOM_WIDTH = 1.0
 TRAPEZOID_TOP_WIDTH = 0.65
-TRAPEZOID_HEIGHT = 0.8
+TRAPEZOID_HEIGHT = 0.7
 
 # Hough Transform
 HOUGH_DIST_RESOLUTION = 1 # distance resolution in pixels of the Hough grid
@@ -61,11 +61,14 @@ class Analyser(object):
 
         self.__lanes_coords_list = []
 
+        self.__cruise_ndf_contor = 0
         self.__cruise_watch_area = 0
         self.__distance_to_car = 0
         self.__plate_coords = []
         self.__cruise_speed = 0
         self.__cruise_preffered_speed = 0
+
+        self.__car_data_updated = False
 
         self.__car_stopped = False
 
@@ -92,7 +95,8 @@ class Analyser(object):
             self.__get_cruise_states_data(car_states_queue)
 
             if getattr(current_thread, 'is_analysing', True):
-                self.__car_detection(commands_queue, autonomous_states_queue)
+                self.__car_detection(autonomous_states_queue)
+                self.__take_cruise_decision(commands_queue)
                 self.__lane_assist(commands_queue)
                 self.__maintain_between_lanes(commands_queue)
                 self.__draw_rect_around_plate(self.__current_frame)
@@ -138,6 +142,7 @@ class Analyser(object):
                         self.__cruise_watch_area = int(current_state[1])
                     elif GLOBAL.CSQ_CRUISE_SPEED in current_state[0]:
                         self.__cruise_speed = int(current_state[1])
+                        self.__car_data_updated = True
                     elif GLOBAL.CSQ_CRUISE_PREFFERED_SPEED in current_state[0]:
                         self.__cruise_preffered_speed = int(current_state[1])
         car_states_queue.task_done()
@@ -167,10 +172,11 @@ class Analyser(object):
         low_thresh_area = self.__cruise_watch_area * 5
         high_thresh_area = self.__cruise_watch_area * 5 + dist_padding
         if self.__cruise_preffered_speed == 0:
-            try:
-                commands_queue.put(GLOBAL.CMD_BRAKE, False)
-            except Queue.Full:
-                pass
+            if self.__cruise_speed > 0:
+                try:
+                    commands_queue.put(GLOBAL.CMD_BRAKE, False)
+                except Queue.Full:
+                    pass
         if self.__cruise_speed > self.__cruise_preffered_speed:
             if time.time() - self.__cruise_timer > (200.0 / 1000.0):
                 try:
@@ -196,24 +202,23 @@ class Analyser(object):
         if self.__distance_to_car > (high_thresh_area + dist_padding):
             if self.__cruise_speed < self.__cruise_preffered_speed:
                 if time.time() - self.__cruise_timer > (200.0 / 1000.0):
-                    try:
-                        commands_queue.put(GLOBAL.CMD_INCREASE_SPEED, False)
-                    except Queue.Full:
-                        pass
-                    self.__cruise_timer = time.time()
+                    if bool(self.__car_data_updated) is True:
+                        try:
+                            commands_queue.put(GLOBAL.CMD_INCREASE_SPEED, False)
+                        except Queue.Full:
+                            pass
+                        self.__cruise_timer = time.time()
+                        self.__car_data_updated = False
 
     def __populate_autonomous_states(self, autonomous_states_queue):
         print 'hello'
 
-    def __car_detection(self, commands_queue, autonomous_states_queue):
+    def __car_detection(self, autonomous_states_queue):
         """
         Detect the possible car in front of our car
         Store useful data states
-        Take decisions and populate the autonomous states queue
-        with taken decisions
         """
         list_of_possible_plates = DetectPlates.detectPlatesInScene(self.__current_frame)
-
         list_of_possible_plates = DetectChars.detectCharsInPlates(list_of_possible_plates)
 
         list_of_possible_plates.sort(key=lambda possiblePlate: len(possiblePlate.strChars), \
@@ -226,11 +231,14 @@ class Analyser(object):
             self.__distance_to_car = frame_shape[0] - self.__plate_coords[3][1]
             self.__distance_to_car = self.__distance_to_car / 6.0
             self.__distance_to_car = float("{0:.2f}".format(self.__distance_to_car))
+            self.__cruise_ndf_contor = 0
             #self.__populate_autonomous_states(autonomous_states_queue)
         else:
-            self.__distance_to_car = 1000
-
-        self.__take_cruise_decision(commands_queue)
+            # make sure that the algoritm doesn't fail for a specific frame
+            self.__cruise_ndf_contor = self.__cruise_ndf_contor + 1
+            if self.__cruise_ndf_contor > 5:
+                self.__distance_to_car = 1000
+                self.__cruise_ndf_contor = 0
 
     def __gaussian_blur(self, img, kernel_size=3):
         """Applies a Gaussian Noise kernel"""
@@ -414,30 +422,30 @@ class Analyser(object):
             tile_bottom_y_coord = tile_bottom_y_coord - tile_padding
 
     def __lane_assist(self, commands_queue):
-        grey = self.__grayscale(self.__current_frame)
-        blur_grey = self.__gaussian_blur(grey)
+        current_frame = self.__grayscale(self.__current_frame)
+        current_frame = self.__gaussian_blur(current_frame)
 
-        edges = self.__canny(blur_grey)
+        current_frame = self.__canny(current_frame)
 
         imshape = self.__current_frame.shape
         vertices = np.array([[\
-			((imshape[1] * (1 - TRAPEZOID_BOTTOM_WIDTH)) // 2, imshape[0]),\
-			((imshape[1] * (1 - TRAPEZOID_TOP_WIDTH)) // 2, imshape[0] - imshape[0] * TRAPEZOID_HEIGHT),\
-			(imshape[1] - (imshape[1] * (1 - TRAPEZOID_TOP_WIDTH)) // 2, imshape[0] - imshape[0] * TRAPEZOID_HEIGHT),\
-			(imshape[1] - (imshape[1] * (1 - TRAPEZOID_BOTTOM_WIDTH)) // 2, imshape[0])]]\
-			, dtype=np.int32)
+		((imshape[1] * (1 - TRAPEZOID_BOTTOM_WIDTH)) // 2, imshape[0]),\
+		((imshape[1] * (1 - TRAPEZOID_TOP_WIDTH)) // 2, imshape[0] - imshape[0] * TRAPEZOID_HEIGHT),\
+		(imshape[1] - (imshape[1] * (1 - TRAPEZOID_TOP_WIDTH)) // 2, \
+            imshape[0] - imshape[0] * TRAPEZOID_HEIGHT),\
+		(imshape[1] - (imshape[1] * (1 - TRAPEZOID_BOTTOM_WIDTH)) // 2, imshape[0])]], dtype=np.int32)
 
-        masked_image = self.__region_of_interest(edges, vertices)
+        current_frame = self.__region_of_interest(current_frame, vertices)
 
-        line_image = self.__hough_lines(masked_image)
+        current_frame = self.__hough_lines(current_frame)
 
         final_image = self.__current_frame.astype('uint8')
 
-        cv2.addWeighted(self.__current_frame, ALPHA, line_image, BETA, GAMMA, final_image)
+        cv2.addWeighted(self.__current_frame, ALPHA, current_frame, BETA, GAMMA, final_image)
 
-        final_image2 = final_image.astype('uint8')
+        final_image = final_image.astype('uint8')
 
-        self.__current_frame = final_image2
+        self.__current_frame = final_image
 
     def __maintain_between_lanes(self, commands_queue):
         if self.__cruise_preffered_speed == 0 or self.__cruise_speed == 0:
@@ -458,11 +466,10 @@ class Analyser(object):
 
         if len(self.__lanes_coords_list) > 3:
             # both lanes detected
-            print 'Both lanes detected'
             if car_head[0] - distance_padding > self.__lanes_coords_list[1][0]:
                 if car_head[0] + distance_padding < self.__lanes_coords_list[3][0]:
-                    if time.time() - self.__lane_assist_timer > 100.0/1000.0:
-                        print 'GO FORWARD'
+                    if time.time() - self.__lane_assist_timer > 200.0/1000.0:
+                        print '[Both] GO FORWARD'
                         try:
                             commands_queue.put(GLOBAL.CMD_GO_FORWARD, False)
                         except Queue.Full:
@@ -471,8 +478,8 @@ class Analyser(object):
                         self.__go_forward = True
 
             if car_head[0] - distance_padding < self.__lanes_coords_list[1][0]:
-                if time.time() - self.__lane_assist_timer > 100.0/1000.0:
-                    print 'GO RIGHT'
+                if time.time() - self.__lane_assist_timer > 200.0/1000.0:
+                    print '[Both] GO RIGHT'
                     try:
                         commands_queue.put(GLOBAL.CMD_GO_RIGHT, False)
                     except Queue.Full:
@@ -481,8 +488,8 @@ class Analyser(object):
                     self.__go_right = True
 
             if car_head[0] + distance_padding > self.__lanes_coords_list[3][0]:
-                if time.time() - self.__lane_assist_timer > 100.0/1000.0:
-                    print 'GO LEFT'
+                if time.time() - self.__lane_assist_timer > 200.0/1000.0:
+                    print '[Both] GO LEFT'
                     try:
                         commands_queue.put(GLOBAL.CMD_GO_LEFT, False)
                     except Queue.Full:
@@ -492,9 +499,9 @@ class Analyser(object):
 
         elif len(self.__lanes_coords_list) > 1:
             # only one lane detected
-            print 'One lane detected'
             if car_head[0] > self.__lanes_coords_list[1][0]:
-                if time.time() - self.__lane_assist_timer > 100.0/1000.0:
+                if time.time() - self.__lane_assist_timer > 200.0/1000.0:
+                    print '[One] GO LEFT'
                     try:
                         commands_queue.put(GLOBAL.CMD_GO_LEFT, False)
                     except Queue.Full:
@@ -503,7 +510,8 @@ class Analyser(object):
                     self.__go_left = True
 
             if car_head[0] < self.__lanes_coords_list[1][0]:
-                if time.time() - self.__lane_assist_timer > 100.0/1000.0:
+                if time.time() - self.__lane_assist_timer > 200.0/1000.0:
+                    print '[One] GO RIGHT'
                     try:
                         commands_queue.put(GLOBAL.CMD_GO_RIGHT, False)
                     except Queue.Full:
@@ -512,7 +520,7 @@ class Analyser(object):
                     self.__go_right = True
         else:
             # no lane detected - we will stop the car
-            print 'NO lanes detected'
+            print '[None] BRAKE'
             try:
                 commands_queue.put(GLOBAL.CMD_BRAKE, False)
             except Queue.Full:
@@ -524,16 +532,21 @@ class Analyser(object):
 
         arrow_vertex_list = []
 
-        if bool(self.__go_right) is True:
+        if bool(self.__go_left) is True:
             print 'right'
             arrow_vertex_list.append([padding, height/2])
             arrow_vertex_list.append([padding * 3, height/3])
             arrow_vertex_list.append([padding * 3, 3 * height/4])
-        elif bool(self.__go_left) is True:
+        elif bool(self.__go_right) is True:
             print 'left'
             arrow_vertex_list.append([width - padding, height/2])
             arrow_vertex_list.append([width - padding * 3, height/3])
             arrow_vertex_list.append([width - padding * 3, 3 * height/4])
+        elif bool(self.__go_forward) is True:
+            print 'front'
+            arrow_vertex_list.append([width/2, padding])
+            arrow_vertex_list.append([width/2 - padding * 3, padding * 2])
+            arrow_vertex_list.append([width/2 + padding * 3, padding * 2])
 
         overlay = self.__current_frame.copy()
         pts = np.array(arrow_vertex_list, np.int32)

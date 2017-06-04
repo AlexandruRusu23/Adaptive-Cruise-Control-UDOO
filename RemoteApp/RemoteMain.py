@@ -351,27 +351,21 @@ class RemoteMain(object):
         if key == QtCore.Qt.Key_Escape:
             sys.exit()
         elif key == QtCore.Qt.Key_W:
-            print 'W'
             COMMANDS_QUEUE.put(CMD_INCREASE_SPEED, True, None)
         elif key == QtCore.Qt.Key_A:
-            print 'A'
             COMMANDS_QUEUE.put(CMD_GO_LEFT, True, None)
         elif key == QtCore.Qt.Key_S:
-            print 'S'
             COMMANDS_QUEUE.put(CMD_DECREASE_SPEED, True, None)
         elif key == QtCore.Qt.Key_D:
-            print 'D'
             COMMANDS_QUEUE.put(CMD_GO_RIGHT, True, None)
         elif key == QtCore.Qt.Key_M:
-            print 'M'
             COMMANDS_QUEUE.put(CMD_BRAKE, True, None)
         elif key == QtCore.Qt.Key_R:
-            print 'R'
             COMMANDS_QUEUE.put(CMD_GO_BACKWARD, True, None)
         elif key == QtCore.Qt.Key_I:
-            print 'I'
+            self.__analyser_thread.is_analysing = True
         elif key == QtCore.Qt.Key_O:
-            print 'O'
+            self.__analyser_thread.is_analysing = False
 
     def __update_frame(self):
         string_data = ANALYSED_FRAME_QUEUE.get(True, None)
