@@ -2,12 +2,12 @@
 Analyser module
 """
 import threading
+import Queue
 import time
 import cv2
 import numpy as np
 import numpy.matlib
 
-import Queue
 import DetectChars
 import DetectPlates
 import RemoteMain as GLOBAL
@@ -37,10 +37,6 @@ ALPHA = 0.8
 BETA = 1.
 GAMMA = 0.
 
-RIGHT_X1_COORD = 1
-LEFT_X1_COORD = 1
-Y1_COORD = 1
-
 class Analyser(object):
     """
     Analyser class
@@ -63,13 +59,18 @@ class Analyser(object):
         self.__fps_counter = 0
         self.__frame_fps = 0
 
-        self.__lines_coords_list = []
+        self.__lanes_coords_list = []
 
         self.__cruise_watch_area = 0
         self.__distance_to_car = 0
         self.__plate_coords = []
         self.__cruise_speed = 0
         self.__cruise_preffered_speed = 0
+
+        self.__car_stopped = False
+
+        self.__cruise_timer = 0
+        self.__lane_assist_timer = 0
 
     def analyse(self, frame_queue, analysed_frame_queue, autonomous_states_queue, \
     commands_queue, car_states_queue):
@@ -88,14 +89,17 @@ class Analyser(object):
             frame = numpy.fromstring(string_data, dtype='uint8')
             self.__current_frame = cv2.imdecode(frame, 1)
 
+            self.__get_cruise_states_data(car_states_queue)
+
             if getattr(current_thread, 'is_analysing', True):
                 self.__car_detection(commands_queue, autonomous_states_queue)
                 self.__lane_assist(commands_queue)
+                self.__maintain_between_lanes(commands_queue)
                 self.__draw_rect_around_plate(self.__current_frame)
                 self.__draw_distance_to_car()
+                self.__draw_car_cruise_watch_area()
+                self.__draw_lane_assist_decision()
 
-            self.__get_cruise_states_data(car_states_queue)
-            self.__draw_car_orientation()
             self.__draw_fps()
 
             result, encrypted_image = \
@@ -162,12 +166,18 @@ class Analyser(object):
         dist_padding = 5
         low_thresh_area = self.__cruise_watch_area * 5
         high_thresh_area = self.__cruise_watch_area * 5 + dist_padding
-        # scenarious when you have to decrease the speed
-        if self.__cruise_speed > self.__cruise_preffered_speed:
+        if self.__cruise_preffered_speed == 0:
             try:
-                commands_queue.put(GLOBAL.CMD_DECREASE_SPEED, False)
+                commands_queue.put(GLOBAL.CMD_BRAKE, False)
             except Queue.Full:
                 pass
+        if self.__cruise_speed > self.__cruise_preffered_speed:
+            if time.time() - self.__cruise_timer > (200.0 / 1000.0):
+                try:
+                    commands_queue.put(GLOBAL.CMD_DECREASE_SPEED, False)
+                except Queue.Full:
+                    pass
+                self.__cruise_timer = time.time()
 
         if self.__distance_to_car < high_thresh_area:
             if self.__distance_to_car < low_thresh_area:
@@ -176,17 +186,21 @@ class Analyser(object):
                 except Queue.Full:
                     pass
             else:
-                try:
-                    commands_queue.put(GLOBAL.CMD_DECREASE_SPEED, False)
-                except Queue.Full:
-                    pass
+                if time.time() - self.__cruise_timer > (200.0 / 1000.0):
+                    try:
+                        commands_queue.put(GLOBAL.CMD_DECREASE_SPEED, False)
+                    except Queue.Full:
+                        pass
+                    self.__cruise_timer = time.time()
         # scenarious when you have to increase the speed
         if self.__distance_to_car > (high_thresh_area + dist_padding):
             if self.__cruise_speed < self.__cruise_preffered_speed:
-                try:
-                    commands_queue.put(GLOBAL.CMD_INCREASE_SPEED, False)
-                except Queue.Full:
-                    pass
+                if time.time() - self.__cruise_timer > (200.0 / 1000.0):
+                    try:
+                        commands_queue.put(GLOBAL.CMD_INCREASE_SPEED, False)
+                    except Queue.Full:
+                        pass
+                    self.__cruise_timer = time.time()
 
     def __populate_autonomous_states(self, autonomous_states_queue):
         print 'hello'
@@ -212,10 +226,11 @@ class Analyser(object):
             self.__distance_to_car = frame_shape[0] - self.__plate_coords[3][1]
             self.__distance_to_car = self.__distance_to_car / 6.0
             self.__distance_to_car = float("{0:.2f}".format(self.__distance_to_car))
-            self.__take_cruise_decision(commands_queue)
             #self.__populate_autonomous_states(autonomous_states_queue)
         else:
             self.__distance_to_car = 1000
+
+        self.__take_cruise_decision(commands_queue)
 
     def __gaussian_blur(self, img, kernel_size=3):
         """Applies a Gaussian Noise kernel"""
@@ -249,7 +264,7 @@ class Analyser(object):
         masked_image = cv2.bitwise_and(img, mask)
         return masked_image
 
-    def __draw_lines(self, img, lines, color=None, thickness=5):
+    def __draw_detected_lanes(self, img, lines, color=None, thickness=5):
         if color is None:
             color = [255, 0, 0]
         if lines is None:
@@ -338,38 +353,34 @@ class Analyser(object):
         left_x1 = int(left_x1)
         left_x2 = int(left_x2)
 
-        if draw_right:
-            cv2.line(img, (right_x1, y1), (right_x2, y2), color, thickness)
+        self.__lanes_coords_list = []
 
         if draw_left:
-            cv2.line(img, (left_x1, y1), (left_x2, y2), color, thickness)
+            if left_x1 < img.shape[1] and left_x2 < img.shape[1]:
+                if left_x1 > 0  and left_x2 > 0:
+                    cv2.line(img, (left_x1, y1), (left_x2, y2), color, thickness)
+                    self.__lanes_coords_list.append((left_x1, y1))
+                    self.__lanes_coords_list.append((left_x2, y2))
 
-        self.__lines_coords_list = []
-        self.__lines_coords_list.append((left_x1, y1))
-        self.__lines_coords_list.append((left_x2, y2))
-        self.__lines_coords_list.append((right_x1, y1))
-        self.__lines_coords_list.append((right_x2, y2))
-
-        global RIGHT_X1_COORD
-        global Y1_COORD
-        global LEFT_X1_COORD
-
-        RIGHT_X1_COORD = right_x1
-        Y1_COORD = y1
-        LEFT_X1_COORD = left_x1
+        if draw_right:
+            if right_x1 < img.shape[1] and right_x2 < img.shape[1]:
+                if right_x1 > 0 and right_x2 > 0:
+                    cv2.line(img, (right_x1, y1), (right_x2, y2), color, thickness)
+                    self.__lanes_coords_list.append((right_x1, y1))
+                    self.__lanes_coords_list.append((right_x2, y2))
 
     def __hough_lines(self, img):
         lines = cv2.HoughLinesP(img, HOUGH_DIST_RESOLUTION, ANGULAR_RESOLUTION, \
             HOUGH_THRESHOLD, np.array([]), minLineLength=MIN_LINE_LENGHT, maxLineGap=MAX_LINE_GAP)
 
-        (x1, x2) = img.shape
-        dt = np.dtype(np.uint8)
-        line_img = np.zeros((x1, x2, 3), dt)
-        self.__draw_lines(line_img, lines)
+        (height, width) = img.shape
+        datatype = np.dtype(np.uint8)
+        line_img = np.zeros((height, width, 3), datatype)
+        self.__draw_detected_lanes(line_img, lines)
 
         return line_img
 
-    def __draw_car_orientation(self):
+    def __draw_car_cruise_watch_area(self):
         if self.__cruise_watch_area == 0:
             return
 
@@ -427,3 +438,106 @@ class Analyser(object):
         final_image2 = final_image.astype('uint8')
 
         self.__current_frame = final_image2
+
+    def __maintain_between_lanes(self, commands_queue):
+        if self.__cruise_preffered_speed == 0 or self.__cruise_speed == 0:
+            self.__car_stopped = True
+        else:
+            self.__car_stopped = False
+
+        if bool(self.__car_stopped) is True:
+            return
+
+        self.__go_forward = False
+        self.__go_left = False
+        self.__go_right = False
+
+        frame_shape = self.__current_frame.shape
+        car_head = (frame_shape[1] / 2, 0)
+        distance_padding = 10 * frame_shape[1] / 100
+
+        if len(self.__lanes_coords_list) > 3:
+            # both lanes detected
+            print 'Both lanes detected'
+            if car_head[0] - distance_padding > self.__lanes_coords_list[1][0]:
+                if car_head[0] + distance_padding < self.__lanes_coords_list[3][0]:
+                    if time.time() - self.__lane_assist_timer > 100.0/1000.0:
+                        print 'GO FORWARD'
+                        try:
+                            commands_queue.put(GLOBAL.CMD_GO_FORWARD, False)
+                        except Queue.Full:
+                            pass
+                        self.__lane_assist_timer = time.time()
+                        self.__go_forward = True
+
+            if car_head[0] - distance_padding < self.__lanes_coords_list[1][0]:
+                if time.time() - self.__lane_assist_timer > 100.0/1000.0:
+                    print 'GO RIGHT'
+                    try:
+                        commands_queue.put(GLOBAL.CMD_GO_RIGHT, False)
+                    except Queue.Full:
+                        pass
+                    self.__lane_assist_timer = time.time()
+                    self.__go_right = True
+
+            if car_head[0] + distance_padding > self.__lanes_coords_list[3][0]:
+                if time.time() - self.__lane_assist_timer > 100.0/1000.0:
+                    print 'GO LEFT'
+                    try:
+                        commands_queue.put(GLOBAL.CMD_GO_LEFT, False)
+                    except Queue.Full:
+                        pass
+                    self.__lane_assist_timer = time.time()
+                    self.__go_left = True
+
+        elif len(self.__lanes_coords_list) > 1:
+            # only one lane detected
+            print 'One lane detected'
+            if car_head[0] > self.__lanes_coords_list[1][0]:
+                if time.time() - self.__lane_assist_timer > 100.0/1000.0:
+                    try:
+                        commands_queue.put(GLOBAL.CMD_GO_LEFT, False)
+                    except Queue.Full:
+                        pass
+                    self.__lane_assist_timer = time.time()
+                    self.__go_left = True
+
+            if car_head[0] < self.__lanes_coords_list[1][0]:
+                if time.time() - self.__lane_assist_timer > 100.0/1000.0:
+                    try:
+                        commands_queue.put(GLOBAL.CMD_GO_RIGHT, False)
+                    except Queue.Full:
+                        pass
+                    self.__lane_assist_timer = time.time()
+                    self.__go_right = True
+        else:
+            # no lane detected - we will stop the car
+            print 'NO lanes detected'
+            try:
+                commands_queue.put(GLOBAL.CMD_BRAKE, False)
+            except Queue.Full:
+                pass
+
+    def __draw_lane_assist_decision(self):
+        (height, width, channels) = self.__current_frame.shape
+        padding = 10
+
+        arrow_vertex_list = []
+
+        if bool(self.__go_right) is True:
+            print 'right'
+            arrow_vertex_list.append([padding, height/2])
+            arrow_vertex_list.append([padding * 3, height/3])
+            arrow_vertex_list.append([padding * 3, 3 * height/4])
+        elif bool(self.__go_left) is True:
+            print 'left'
+            arrow_vertex_list.append([width - padding, height/2])
+            arrow_vertex_list.append([width - padding * 3, height/3])
+            arrow_vertex_list.append([width - padding * 3, 3 * height/4])
+
+        overlay = self.__current_frame.copy()
+        pts = np.array(arrow_vertex_list, np.int32)
+        pts = pts.reshape((-1, 1, 2))
+        cv2.fillConvexPoly(overlay, pts, (0, 200, 200))
+        alpha = 0.5
+        cv2.addWeighted(overlay, alpha, self.__current_frame, 1-alpha, 0, self.__current_frame)

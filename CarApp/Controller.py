@@ -100,7 +100,7 @@ class Controller(object):
                 car_data_queue.put(self.__serial_manager.get_car_data(), False)
             except Queue.Full:
                 pass
-            time.sleep(200.0 / 1000.0)
+            time.sleep(100.0 / 1000.0)
 
         self.__stop_serial_manager()
 

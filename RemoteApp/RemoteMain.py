@@ -315,15 +315,15 @@ class RemoteMain(object):
 
     def __speed_up_button_clicked(self):
         if self.__cruise_preffered_speed < 250:
-            if self.__cruise_preffered_speed < 50:
-                self.__cruise_preffered_speed = 50
+            if self.__cruise_preffered_speed < 100:
+                self.__cruise_preffered_speed = 100
             else:
                 self.__cruise_preffered_speed = self.__cruise_preffered_speed + 10
 
     def __speed_down_button_clicked(self):
         if self.__cruise_speed == 0:
             self.__cruise_preffered_speed = 0
-        if self.__cruise_preffered_speed > 50:
+        if self.__cruise_preffered_speed > 100:
             self.__cruise_preffered_speed = self.__cruise_preffered_speed - 10
         else:
             self.__cruise_preffered_speed = 0

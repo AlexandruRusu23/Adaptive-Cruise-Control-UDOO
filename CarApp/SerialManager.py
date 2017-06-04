@@ -42,9 +42,6 @@ class SerialManager(threading.Thread):
         self.__serial_file = serial.Serial(self.__serial_name, self.__serial_ratio)
         self.__serial_lock.release()
 
-        self.__serial_file.reset_input_buffer()
-        self.__serial_file.reset_output_buffer()
-
         # reset the stop checker
         self.__check_timer = time.time()
 
