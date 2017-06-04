@@ -68,6 +68,7 @@ class Analyser(object):
         self.__cruise_speed = 0
         self.__cruise_preffered_speed = 0
 
+        self.__car_states_timer = 0
         self.__car_data_updated = False
 
         self.__car_stopped = False
@@ -129,23 +130,25 @@ class Analyser(object):
             (0, 21), font, 1, (0, 255, 255), 2, cv2.LINE_AA)
 
     def __get_cruise_states_data(self, car_states_queue):
-        try:
-            car_states = car_states_queue.get(False)
-        except Queue.Empty:
-            return
-        if car_states:
-            car_states = car_states.split(';')
-            for elem in car_states:
-                current_state = elem.split(',')
-                if len(current_state) > 1:
-                    if GLOBAL.CSQ_CRUISE_DISTANCE in current_state[0]:
-                        self.__cruise_watch_area = int(current_state[1])
-                    elif GLOBAL.CSQ_CRUISE_SPEED in current_state[0]:
-                        self.__cruise_speed = int(current_state[1])
-                        self.__car_data_updated = True
-                    elif GLOBAL.CSQ_CRUISE_PREFFERED_SPEED in current_state[0]:
-                        self.__cruise_preffered_speed = int(current_state[1])
-        car_states_queue.task_done()
+        if time.time() - self.__car_states_timer > 0.2:
+            try:
+                car_states = car_states_queue.get(False)
+            except Queue.Empty:
+                return
+            if car_states:
+                car_states = car_states.split(';')
+                for elem in car_states:
+                    current_state = elem.split(',')
+                    if len(current_state) > 1:
+                        if GLOBAL.CSQ_CRUISE_DISTANCE in current_state[0]:
+                            self.__cruise_watch_area = int(current_state[1])
+                        elif GLOBAL.CSQ_CRUISE_SPEED in current_state[0]:
+                            self.__cruise_speed = int(current_state[1])
+                            self.__car_data_updated = True
+                        elif GLOBAL.CSQ_CRUISE_PREFFERED_SPEED in current_state[0]:
+                            self.__cruise_preffered_speed = int(current_state[1])
+            car_states_queue.task_done()
+            self.__car_states_timer = time.time()
 
     def __draw_rect_around_plate(self, current_scene):
         if len(self.__plate_coords) > 3:
@@ -186,18 +189,11 @@ class Analyser(object):
                 self.__cruise_timer = time.time()
 
         if self.__distance_to_car < high_thresh_area:
-            if self.__distance_to_car < low_thresh_area:
-                try:
-                    commands_queue.put(GLOBAL.CMD_BRAKE, False)
-                except Queue.Full:
-                    pass
-            else:
-                if time.time() - self.__cruise_timer > (200.0 / 1000.0):
-                    try:
-                        commands_queue.put(GLOBAL.CMD_DECREASE_SPEED, False)
-                    except Queue.Full:
-                        pass
-                    self.__cruise_timer = time.time()
+            try:
+                commands_queue.put(GLOBAL.CMD_BRAKE, False)
+            except Queue.Full:
+                pass
+
         # scenarious when you have to increase the speed
         if self.__distance_to_car > (high_thresh_area + dist_padding):
             if self.__cruise_speed < self.__cruise_preffered_speed:
