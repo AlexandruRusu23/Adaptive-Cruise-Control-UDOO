@@ -110,6 +110,7 @@ class RemoteMain(object):
         self.__current_command = ''
 
         self.__acc_activated = False
+        self.__decisions_activated = False
         self.__cruise_watch_area = 4
         self.__cruise_speed = 0
         self.__cruise_preffered_speed = 0
@@ -120,6 +121,7 @@ class RemoteMain(object):
         self.grid_layout = None
         self.distance_buttons_layout = None
         self.acc_activate_button = None
+        self.decisions_activate_button = None
         self.increase_distance_button = None
         self.decrease_distance_button = None
         self.streamer_image_layout = None
@@ -163,6 +165,9 @@ class RemoteMain(object):
         self.acc_activate_button = QtGui.QPushButton(self.centralwidget)
         self.acc_activate_button.setObjectName(FROM_UTF8("acc_activate_button"))
         self.distance_buttons_layout.addWidget(self.acc_activate_button)
+        self.decisions_activate_button = QtGui.QPushButton(self.centralwidget)
+        self.decisions_activate_button.setObjectName(FROM_UTF8("decisions_activate_button"))
+        self.distance_buttons_layout.addWidget(self.decisions_activate_button)
         self.increase_distance_button = QtGui.QPushButton(self.centralwidget)
         self.increase_distance_button.setObjectName(FROM_UTF8("increase_distance_button"))
         self.distance_buttons_layout.addWidget(self.increase_distance_button)
@@ -287,6 +292,7 @@ class RemoteMain(object):
         self.increase_distance_button.clicked.connect(self.__increase_distance_btn_clicked)
         self.decrease_distance_button.clicked.connect(self.__decrease_distance_btn_clicked)
         self.acc_activate_button.clicked.connect(self.__acc_activate_button_clicked)
+        self.decisions_activate_button.clicked.connect(self.__decisions_button_clicked)
 
         self.retranslate_ui(main_window)
         QtCore.QMetaObject.connectSlotsByName(main_window)
@@ -298,6 +304,7 @@ class RemoteMain(object):
         main_window.setWindowTitle(\
             _translate("main_window", "Adaptive Cruise Control - RS Lang", None))
         self.acc_activate_button.setText(_translate("main_window", "ACC", None))
+        self.decisions_activate_button.setText(_translate("main_window", "Decisions", None))
         self.increase_distance_button.setText(_translate("main_window", "Increase Distance", None))
         self.decrease_distance_button.setText(_translate("main_window", "Decrease Distance", None))
         self.speed_up_button.setText(_translate("main_window", "Speed Up", None))
@@ -312,6 +319,10 @@ class RemoteMain(object):
     def __acc_activate_button_clicked(self):
         self.__acc_activated = not self.__acc_activated
         self.__analyser_thread.is_analysing = self.__acc_activated
+
+    def __decisions_button_clicked(self):
+        self.__decisions_activated = not self.__decisions_activated
+        self.__analyser_thread.is_deciding = self.__decisions_activated
 
     def __speed_up_button_clicked(self):
         if self.__cruise_preffered_speed < 250:
@@ -338,7 +349,7 @@ class RemoteMain(object):
         print 'increase ' + str(self.__cruise_watch_area)
 
     def __decrease_distance_btn_clicked(self):
-        if self.__cruise_watch_area > 0:
+        if self.__cruise_watch_area > 1:
             self.__cruise_watch_area = self.__cruise_watch_area - 1
         print 'decrease ' + str(self.__cruise_watch_area)
 
@@ -409,6 +420,11 @@ class RemoteMain(object):
             self.acc_activate_button.setStyleSheet("background-color: red")
         else:
             self.acc_activate_button.setStyleSheet("background-color: green")
+
+        if bool(self.__decisions_activated) is False:
+            self.decisions_activate_button.setStyleSheet("background-color: red")
+        else:
+            self.decisions_activate_button.setStyleSheet("background-color: green")
 
         self.speed_text.setText(_translate("main_window", str(self.__cruise_speed), None))
         self.command_text.setText(_translate("main_window", str(self.__current_command), None))
