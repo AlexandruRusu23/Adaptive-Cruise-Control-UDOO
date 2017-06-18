@@ -37,6 +37,11 @@ ALPHA = 0.8
 BETA = 1.
 GAMMA = 0.
 
+AVD_CHANGE_DIRECTION = 'CHANGE_DIRECTION'
+AVD_AVOID_OBJECT = 'AVOID_OBJECT'
+AVD_RETURN_TO_LANE = 'RETURN_TO_LANE'
+AVD_FINISHED = 'FINISHED_AVD'
+
 class Analyser(object):
     """
     Analyser class
@@ -76,6 +81,22 @@ class Analyser(object):
         self.__cruise_timer = 0
         self.__lane_assist_timer = 0
 
+        # object avoidance data
+        self.__dp = 1
+        self.__min_dist = 50
+        self.__circle_param_1 = 150
+        self.__circle_param_2 = 30
+        self.__objects_coords_list = []
+        self.__avoiding_activated = False
+
+        self.__avoidance_go_forward = False
+        self.__avoidance_go_left = False
+        self.__avoidance_go_right = False
+
+        self.__avoidance_timer = 0
+        self.__returner_timer = 0
+        self.__avoidance_state = ''
+
     def analyse(self, frame_queue, analysed_frame_queue, autonomous_states_queue, \
     commands_queue, car_states_queue):
         """
@@ -97,13 +118,20 @@ class Analyser(object):
 
             if getattr(current_thread, 'is_analysing', True):
                 self.__car_detection(autonomous_states_queue)
-                self.__take_cruise_decision(commands_queue)
                 self.__lane_assist(commands_queue)
-                self.__maintain_between_lanes(commands_queue)
+                self.__detect_objects()
+
+                if bool(self.__avoiding_activated) is False:
+                    self.__take_cruise_decision(commands_queue)
+                    self.__maintain_between_lanes(commands_queue)
+
+                self.__avoid_detected_objects(commands_queue)
+
                 self.__draw_rect_around_plate(self.__current_frame)
                 self.__draw_distance_to_car()
                 self.__draw_car_cruise_watch_area()
                 self.__draw_lane_assist_decision()
+                self.__draw_detected_objects()
 
             self.__draw_fps()
 
@@ -249,6 +277,7 @@ class Analyser(object):
 
         lower = int(max(0, (1.0 - sigma) * median_variable))
         upper = int(min(255, (1.0 + sigma) * median_variable))
+        self.__circle_param_1 = upper
         edged = cv2.Canny(image, lower, upper)
 
         return edged
@@ -550,3 +579,121 @@ class Analyser(object):
         cv2.fillConvexPoly(overlay, pts, (0, 200, 200))
         alpha = 0.5
         cv2.addWeighted(overlay, alpha, self.__current_frame, 1-alpha, 0, self.__current_frame)
+
+    def __detect_objects(self):
+        if (self.__avoiding_activated) is True:
+            return
+
+        frame = self.__current_frame
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        blur_grey = self.__gaussian_blur(gray)
+
+        circles = cv2.HoughCircles(blur_grey, cv2.HOUGH_GRADIENT, dp=self.__dp, \
+        minDist=self.__min_dist, param1=self.__circle_param_1, param2=self.__circle_param_2, \
+        minRadius=0, maxRadius=0)
+
+        frame_shape = frame.shape
+        go_left = True
+        go_right = True
+        go_front = True
+
+        self.__objects_coords_list = []
+
+        # ensure at least some circles were found
+        if circles is not None:
+            # convert the (x, y) coordinates and radius of the circles to integers
+            circles = np.round(circles[0, :]).astype("int")
+
+            # loop over the (x, y) coordinates and radius of the circles
+            for element in circles:
+                if element[1] > frame_shape[0] / 2:
+                    if element[0] < frame_shape[1] / 2:
+                        go_left = False
+                    elif element[0] > frame_shape[1] / 2:
+                        go_right = False
+                    if element[0] < 70 * frame_shape[1] / 100:
+                        if element[0] > 30 * frame_shape[1] / 100:
+                            go_front = False
+                    self.__objects_coords_list.append(element)
+
+            if bool(go_front) is True:
+                self.__avoiding_activated = True
+                self.__avoidance_go_forward = True
+            elif bool(go_left) is True:
+                self.__avoiding_activated = True
+                self.__avoidance_go_left = True
+            elif bool(go_right) is True:
+                self.__avoiding_activated = True
+                self.__avoidance_go_right = True
+
+    def __avoid_detected_objects(self, commands_queue):
+        if bool(self.__avoiding_activated) is True:
+            if self.__avoidance_state == '':
+                if bool(self.__avoidance_go_left) is True:
+                    self.__avoidance_state = AVD_CHANGE_DIRECTION
+                elif bool(self.__avoidance_go_right) is True:
+                    self.__avoidance_state = AVD_CHANGE_DIRECTION
+            elif self.__avoidance_state == AVD_CHANGE_DIRECTION:
+                if bool(self.__avoidance_go_left) is True:
+                    try:
+                        commands_queue.put(GLOBAL.CMD_GO_LEFT, False)
+                        self.__avoidance_state = AVD_AVOID_OBJECT
+                    except Queue.Full:
+                        self.__avoidance_state = AVD_CHANGE_DIRECTION
+                elif bool(self.__avoidance_go_right) is True:
+                    try:
+                        commands_queue.put(GLOBAL.CMD_GO_RIGHT, False)
+                        self.__avoidance_state = AVD_AVOID_OBJECT
+                    except Queue.Full:
+                        self.__avoidance_state = AVD_CHANGE_DIRECTION
+                self.__avoidance_timer = time.time()
+            elif self.__avoidance_state == AVD_AVOID_OBJECT:
+                if bool(self.__avoidance_go_left) is True:
+                    if time.time() - self.__avoidance_timer > 1:
+                        try:
+                            commands_queue.put(GLOBAL.CMD_GO_RIGHT, False)
+                            self.__avoidance_state = AVD_RETURN_TO_LANE
+                        except Queue.Full:
+                            self.__avoidance_state = AVD_AVOID_OBJECT
+                elif bool(self.__avoidance_go_right) is True:
+                    if time.time() - self.__avoidance_timer > 1:
+                        try:
+                            commands_queue.put(GLOBAL.CMD_GO_LEFT, False)
+                            self.__avoidance_state = AVD_RETURN_TO_LANE
+                        except Queue.Full:
+                            self.__avoidance_state = AVD_AVOID_OBJECT
+                self.__returner_timer = time.time()
+            elif self.__avoidance_state == AVD_RETURN_TO_LANE:
+                if bool(self.__avoidance_go_left) is True:
+                    if time.time() - self.__returner_timer > 1:
+                        try:
+                            commands_queue.put(GLOBAL.CMD_GO_RIGHT, False)
+                            self.__avoidance_state = AVD_FINISHED
+                        except Queue.Full:
+                            self.__avoidance_state = AVD_RETURN_TO_LANE
+                elif bool(self.__avoidance_go_right) is True:
+                    if time.time() - self.__returner_timer > 1:
+                        try:
+                            commands_queue.put(GLOBAL.CMD_GO_LEFT, False)
+                            self.__avoidance_state = AVD_FINISHED
+                        except Queue.Full:
+                            self.__avoidance_state = AVD_RETURN_TO_LANE
+                self.__avoidance_timer = time.time()
+            elif self.__avoidance_state == AVD_FINISHED:
+                self.__avoiding_activated = False
+                self.__avoidance_go_forward = True
+                self.__avoidance_go_left = False
+                self.__avoidance_go_right = False
+                self.__avoidance_state = ''
+
+        if bool(self.__avoidance_go_forward) is True:
+            if time.time() - self.__avoidance_timer > 1:
+                try:
+                    commands_queue.put(GLOBAL.CMD_INCREASE_SPEED, False)
+                    self.__avoidance_go_forward = False
+                except Queue.Full:
+                    self.__avoidance_go_forward = True
+
+    def __draw_detected_objects(self):
+        for element in self.__objects_coords_list:
+            cv2.circle(self.__current_frame, (element[0], element[1]), element[2], (0, 255, 0), 4)
