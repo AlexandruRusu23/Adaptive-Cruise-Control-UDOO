@@ -40,6 +40,7 @@ GAMMA = 0.
 AVD_START_AVOIDANCE = 'START_AVOIDANCE'
 AVD_PREPARE_AVOIDANCE = "PREPARE_AVOIDANCE"
 AVD_AVOID_OBJECT = 'AVOID_OBJECT'
+AVD_GO_FORWARD = 'AVOID_GO_FORWARD'
 AVD_RETURN_TO_LANE = 'RETURN_TO_LANE'
 AVD_PREPARE_TO_FINISH = 'PREPARE_TO_FINISH'
 AVD_FINISHED = 'FINISHED_AVD'
@@ -630,14 +631,13 @@ class Analyser(object):
 
     def __avoid_detected_objects(self, commands_queue):
         if bool(self.__avoiding_activated) is True:
-             
             if self.__avoidance_state == '':
                 if bool(self.__avoidance_go_left) is True:
                     self.__avoidance_state = AVD_START_AVOIDANCE
                 elif bool(self.__avoidance_go_right) is True:
                     self.__avoidance_state = AVD_START_AVOIDANCE
-            
-            #P1
+
+            #P1 - start avoidance (change direction)
             elif self.__avoidance_state == AVD_START_AVOIDANCE:
                 if bool(self.__avoidance_go_left) is True:
                     try:
@@ -653,79 +653,93 @@ class Analyser(object):
                         self.__avoidance_state = AVD_START_AVOIDANCE
                 self.__avoidance_timer = time.time()
 
-            #P2
+            #P2 - prepare avoidance
             elif self.__avoidance_state == AVD_PREPARE_AVOIDANCE:
-                if bool(self.__avoidance_go_left) is True:
-                    if time.time() - self.__avoidance_timer > 1:
+                if time.time() - self.__avoidance_timer > 1:
+                    if bool(self.__avoidance_go_left) is True:
                         try:
                             commands_queue.put(GLOBAL.CMD_GO_RIGHT, False)
                             self.__avoidance_state = AVD_AVOID_OBJECT
                         except Queue.Full:
                             self.__avoidance_state = AVD_PREPARE_AVOIDANCE
-                elif bool(self.__avoidance_go_right) is True:
-                    if time.time() - self.__avoidance_timer > 1:
+                    elif bool(self.__avoidance_go_right) is True:
                         try:
                             commands_queue.put(GLOBAL.CMD_GO_LEFT, False)
                             self.__avoidance_state = AVD_AVOID_OBJECT
                         except Queue.Full:
                             self.__avoidance_state = AVD_PREPARE_AVOIDANCE
-                self.__avoidance_timer = time.time()
+                    self.__avoidance_timer = time.time()
 
-            #P3
+            #P3 - start avoid object
             elif self.__avoidance_state == AVD_AVOID_OBJECT:
-                if bool(self.__avoidance_go_left) is True:
-                    if time.time() - self.__avoidance_timer > 1:
+                if time.time() - self.__avoidance_timer > 1:
+                    if bool(self.__avoidance_go_left) is True:
                         try:
                             commands_queue.put(GLOBAL.CMD_GO_FORWARD, False)
-                            self.__avoidance_state = AVD_RETURN_TO_LANE
+                            self.__avoidance_state = AVD_GO_FORWARD
                         except Queue.Full:
                             self.__avoidance_state = AVD_AVOID_OBJECT
-                elif bool(self.__avoidance_go_right) is True:
-                    if time.time() - self.__avoidance_timer > 1:
+                    elif bool(self.__avoidance_go_right) is True:
                         try:
                             commands_queue.put(GLOBAL.CMD_GO_FORWARD, False)
-                            self.__avoidance_state = AVD_RETURN_TO_LANE
+                            self.__avoidance_state = AVD_GO_FORWARD
                         except Queue.Full:
                             self.__avoidance_state = AVD_AVOID_OBJECT
-                self.__avoidance_timer = time.time()
+                    self.__avoidance_timer = time.time()
 
-            #P4
+            #P3 BIS - avoiding object
+            elif self.__avoidance_state == AVD_GO_FORWARD:
+                if time.time() - self.__avoidance_timer > 1:
+                    if bool(self.__avoidance_go_left) is True:
+                        try:
+                            commands_queue.put(GLOBAL.CMD_INCREASE_SPEED, False)
+                            self.__avoidance_state = AVD_RETURN_TO_LANE
+                        except Queue.Full:
+                            self.__avoidance_state = AVD_GO_FORWARD
+                    elif bool(self.__avoidance_go_right) is True:
+                        try:
+                            commands_queue.put(GLOBAL.CMD_INCREASE_SPEED, False)
+                            self.__avoidance_state = AVD_RETURN_TO_LANE
+                        except Queue.Full:
+                            self.__avoidance_state = AVD_GO_FORWARD
+                    self.__avoidance_timer = time.time()
+
+            #P4 - return to lane
             elif self.__avoidance_state == AVD_RETURN_TO_LANE:
-                if bool(self.__avoidance_go_left) is True:
-                    if time.time() - self.__avoidance_timer > 1:
+                if time.time() - self.__avoidance_timer > 1:
+                    if bool(self.__avoidance_go_left) is True:
                         try:
                             commands_queue.put(GLOBAL.CMD_GO_RIGHT, False)
                             self.__avoidance_state = AVD_PREPARE_TO_FINISH
                         except Queue.Full:
                             self.__avoidance_state = AVD_RETURN_TO_LANE
-                elif bool(self.__avoidance_go_right) is True:
-                    if time.time() - self.__avoidance_timer > 1:
-                        try:
-                            commands_queue.put(GLOBAL.CMD_GO_LEFT, False)
-                            self.__avoidance_state = AVD_PREPARE_TO_FINISH
-                        except Queue.Full:
-                            self.__avoidance_state = AVD_RETURN_TO_LANE
-                self.__avoidance_timer = time.time()
+                    elif bool(self.__avoidance_go_right) is True:
+                        if time.time() - self.__avoidance_timer > 1:
+                            try:
+                                commands_queue.put(GLOBAL.CMD_GO_LEFT, False)
+                                self.__avoidance_state = AVD_PREPARE_TO_FINISH
+                            except Queue.Full:
+                                self.__avoidance_state = AVD_RETURN_TO_LANE
+                    self.__avoidance_timer = time.time()
 
-            #P5
+            #P5 - prepare to finish
             elif self.__avoidance_state == AVD_PREPARE_TO_FINISH:
-                if bool(self.__avoidance_go_left) is True:
-                    if time.time() - self.__avoidance_timer > 1:
+                if time.time() - self.__avoidance_timer > 1:
+                    if bool(self.__avoidance_go_left) is True:
                         try:
                             commands_queue.put(GLOBAL.CMD_GO_LEFT, False)
                             self.__avoidance_state = AVD_FINISHED
                         except Queue.Full:
                             self.__avoidance_state = AVD_PREPARE_TO_FINISH
-                elif bool(self.__avoidance_go_right) is True:
-                    if time.time() - self.__avoidance_timer > 1:
+                    elif bool(self.__avoidance_go_right) is True:
                         try:
                             commands_queue.put(GLOBAL.CMD_GO_RIGHT, False)
                             self.__avoidance_state = AVD_FINISHED
                         except Queue.Full:
                             self.__avoidance_state = AVD_PREPARE_TO_FINISH
-                self.__avoidance_timer = time.time()
+                    self.__avoidance_timer = time.time()
 
-            #P6
+            #P6 - finish
             elif self.__avoidance_state == AVD_FINISHED:
                 self.__avoiding_activated = False
                 self.__avoidance_go_forward = True
@@ -736,11 +750,11 @@ class Analyser(object):
         if bool(self.__avoidance_go_forward) is True:
             if time.time() - self.__avoidance_timer > 1:
                 try:
-                    commands_queue.put(GLOBAL.CMD_INCREASE_SPEED, False)
+                    commands_queue.put(GLOBAL.CMD_GO_FORWARD, False)
                     self.__avoidance_go_forward = False
                 except Queue.Full:
                     self.__avoidance_go_forward = True
-                    
+
     def __draw_detected_objects(self):
         for element in self.__objects_coords_list:
             cv2.circle(self.__current_frame, (element[0], element[1]), element[2], (0, 255, 0), 4)
