@@ -98,9 +98,9 @@ class Controller(object):
         while getattr(current_thread, 'is_running', True):
             try:
                 car_data_queue.put(self.__serial_manager.get_car_data(), False)
+                time.sleep(200.0 / 1000.0)
             except Queue.Full:
                 pass
-            time.sleep(100.0 / 1000.0)
 
         self.__stop_serial_manager()
 

@@ -56,7 +56,7 @@ class SerialManager(threading.Thread):
                 if bool(condition) is False:
                     break
                 self.__check_timer = time.time()
-            time.sleep(100.0/1000.0) # too much locking on serial
+            time.sleep(100.0/1000.0)
 
         # close the connection with Arduino's Serial
         self.__serial_lock.acquire()
