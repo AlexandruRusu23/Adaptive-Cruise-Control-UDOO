@@ -121,11 +121,11 @@ class Analyser(object):
                 self.__lane_assist(commands_queue)
                 self.__detect_objects()
 
-                if bool(self.__avoiding_activated) is False:
-                    self.__take_cruise_decision(commands_queue)
-                    self.__maintain_between_lanes(commands_queue)
-
-                self.__avoid_detected_objects(commands_queue)
+                if getattr(current_thread, 'is_deciding', True):
+                    if bool(self.__avoiding_activated) is False:
+                        self.__take_cruise_decision(commands_queue)
+                        self.__maintain_between_lanes(commands_queue)
+                    self.__avoid_detected_objects(commands_queue)
 
                 self.__draw_rect_around_plate(self.__current_frame)
                 self.__draw_distance_to_car()
