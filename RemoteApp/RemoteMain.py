@@ -344,7 +344,7 @@ class RemoteMain(object):
         print 'brake'
 
     def __increase_distance_btn_clicked(self):
-        if self.__cruise_watch_area < 4:
+        if self.__cruise_watch_area < 5:
             self.__cruise_watch_area = self.__cruise_watch_area + 1
         print 'increase ' + str(self.__cruise_watch_area)
 

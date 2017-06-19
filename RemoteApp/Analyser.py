@@ -88,13 +88,14 @@ class Analyser(object):
         self.__dp = 1
         self.__min_dist = 50
         self.__circle_param_1 = 150
-        self.__circle_param_2 = 30
+        self.__circle_param_2 = 50
         self.__objects_coords_list = []
         self.__avoiding_activated = False
 
         self.__avoidance_go_forward = False
         self.__avoidance_go_left = False
         self.__avoidance_go_right = False
+        self.__avoidance_brake = False
 
         self.__avoidance_timer = 0
         self.__returner_timer = 0
@@ -121,14 +122,16 @@ class Analyser(object):
 
             if getattr(current_thread, 'is_analysing', True):
                 self.__car_detection(autonomous_states_queue)
-                self.__lane_assist(commands_queue)
+                #self.__lane_assist(commands_queue)
                 self.__detect_objects()
 
                 if getattr(current_thread, 'is_deciding', True):
                     if bool(self.__avoiding_activated) is False:
                         self.__take_cruise_decision(commands_queue)
-                        self.__maintain_between_lanes(commands_queue)
+                        #self.__maintain_between_lanes(commands_queue)
                     self.__avoid_detected_objects(commands_queue)
+                else:
+                    self.__avoiding_activated = False
 
                 self.__draw_rect_around_plate(self.__current_frame)
                 self.__draw_distance_to_car()
@@ -561,17 +564,14 @@ class Analyser(object):
         arrow_vertex_list = []
 
         if bool(self.__go_left) is True:
-            print 'right'
             arrow_vertex_list.append([padding, height/2])
             arrow_vertex_list.append([padding * 3, height/3])
             arrow_vertex_list.append([padding * 3, 3 * height/4])
         elif bool(self.__go_right) is True:
-            print 'left'
             arrow_vertex_list.append([width - padding, height/2])
             arrow_vertex_list.append([width - padding * 3, height/3])
             arrow_vertex_list.append([width - padding * 3, 3 * height/4])
         elif bool(self.__go_forward) is True:
-            print 'front'
             arrow_vertex_list.append([width/2, padding])
             arrow_vertex_list.append([width/2 - padding * 3, padding * 2])
             arrow_vertex_list.append([width/2 + padding * 3, padding * 2])
@@ -609,7 +609,7 @@ class Analyser(object):
 
             # loop over the (x, y) coordinates and radius of the circles
             for element in circles:
-                if element[1] > frame_shape[0] / 2:
+                if element[1] > (3 * frame_shape[0] / 5):
                     if element[0] < frame_shape[1] / 2:
                         go_left = False
                     elif element[0] > frame_shape[1] / 2:
@@ -628,10 +628,21 @@ class Analyser(object):
             elif bool(go_right) is True:
                 self.__avoiding_activated = True
                 self.__avoidance_go_right = True
+            else:
+                self.__avoiding_activated = True
+                self.__avoidance_brake = True
 
     def __avoid_detected_objects(self, commands_queue):
         if bool(self.__avoiding_activated) is True:
-            if self.__avoidance_state == '':
+            if bool(self.__avoidance_brake) is True:
+                try:
+                    commands_queue.put(GLOBAL.CMD_BRAKE, False)
+                    self.__avoiding_activated = False
+                    self.__avoidance_brake = False
+                except Queue.Full:
+                    self.__avoiding_activated = True
+                    self.__avoidance_brake = True
+            elif self.__avoidance_state == '':
                 if bool(self.__avoidance_go_left) is True:
                     self.__avoidance_state = AVD_START_AVOIDANCE
                 elif bool(self.__avoidance_go_right) is True:
