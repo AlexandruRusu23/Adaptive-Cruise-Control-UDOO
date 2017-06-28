@@ -1,9 +1,10 @@
 """
 Streamer Server module
 """
+import Queue
+import time
 import threading
 import socket
-import sys
 
 class StreamerServer(object):
     """
@@ -28,7 +29,10 @@ class StreamerServer(object):
             try:
                 current_thread.is_connected = True
                 while getattr(current_thread, 'is_connected', True):
-                    frame = frame_queue.get(True, None)
+                    try:
+                        frame = frame_queue.get(False)
+                    except Queue.Empty:
+                        continue
                     self.__connection.send(str(len(frame)).ljust(4096))
                     self.__connection.send(frame)
                     frame_queue.task_done()

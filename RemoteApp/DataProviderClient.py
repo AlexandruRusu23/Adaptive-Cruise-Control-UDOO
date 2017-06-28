@@ -1,6 +1,7 @@
 """
 data provider client
 """
+import Queue
 import threading
 import socket
 
@@ -24,7 +25,12 @@ class DataProviderClient(object):
             if length is not None:
                 string_data = self.__recvall(self.__socket, int(length))
                 if string_data is not None:
-                    car_data_queue.put(string_data, True, None)
+                    while getattr(current_thread, 'is_running', True):
+                        try:
+                            car_data_queue.put(string_data, False)
+                        except Queue.Full:
+                            continue
+                        break
         self.__socket.close()
 
     def __recvall(self, sock, count):

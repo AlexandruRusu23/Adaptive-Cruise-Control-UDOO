@@ -116,7 +116,10 @@ class Analyser(object):
 
         self.__fps_timer = time.time()
         while getattr(current_thread, 'is_running', True):
-            string_data = frame_queue.get(True, None)
+            try:
+                string_data = frame_queue.get(False)
+            except Queue.Empty:
+                continue
             frame = numpy.fromstring(string_data, dtype='uint8')
             self.__current_frame = cv2.imdecode(frame, 1)
 
@@ -150,7 +153,12 @@ class Analyser(object):
                 break
 
             analysed_frame = numpy.array(encrypted_image)
-            analysed_frame_queue.put(str(analysed_frame.tostring()), True, None)
+            while getattr(current_thread, 'is_running', True):
+                try:
+                    analysed_frame_queue.put(str(analysed_frame.tostring()), False)
+                except Queue.Empty:
+                    continue
+                break
             frame_queue.task_done()
 
             self.__fps_counter = self.__fps_counter + 1

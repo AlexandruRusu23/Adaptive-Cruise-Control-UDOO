@@ -1,7 +1,8 @@
 """
 Data Provider Server module
 """
-import sys
+import Queue
+import time
 import threading
 import socket
 
@@ -26,12 +27,18 @@ class DataProviderServer(object):
         while getattr(current_thread, 'is_running', True):
             self.__connection, client_address = self.__socket.accept()
             try:
-                while getattr(current_thread, 'is_connected', True):
-                    states = car_data_queue.get(True, None)
-                    self.__connection.send(str(len(states)).ljust(1024))
-                    self.__connection.send(states)
-                    car_data_queue.task_done()
                 current_thread.is_connected = True
+                __thread_timer = time.time()
+                while getattr(current_thread, 'is_connected', True):
+                    if time.time() - __thread_timer > 100.0 / 1000.0:
+                        __thread_timer = time.time()
+                        try:
+                            states = car_data_queue.get(False)
+                        except Queue.Empty:
+                            continue
+                        self.__connection.send(str(len(states)).ljust(1024))
+                        self.__connection.send(states)
+                        car_data_queue.task_done()
             finally:
                 self.__connection.close()
         self.__socket.close()
