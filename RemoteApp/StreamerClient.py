@@ -1,6 +1,7 @@
 """
 Streamer Module
 """
+import Queue
 import threading
 import socket
 import cv2
@@ -26,7 +27,12 @@ class StreamerClient(object):
             if length is not None:
                 string_data = self.__recvall(self.__socket, int(length))
                 if string_data is not None:
-                    frame_queue.put(string_data, True, None)
+                    while getattr(current_thread, 'is_running', True):
+                        try:
+                            frame_queue.put(string_data, False)
+                        except Queue.Full:
+                            continue
+                        break
         self.__socket.close()
 
     def __recvall(self, sock, count):

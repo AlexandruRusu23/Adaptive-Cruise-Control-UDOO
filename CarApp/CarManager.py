@@ -59,48 +59,41 @@ class CarManager(threading.Thread):
         self.__controller_thread = \
             threading.Thread(target=Controller.Controller.send_commands, \
             args=(self.__controller, COMMANDS_QUEUE))
-        self.__controller_thread.setDaemon(True)
         self.__controller_thread.start()
 
         # get car data thread
         self.__car_data_thread = \
             threading.Thread(target=Controller.Controller.get_car_data, \
             args=(self.__controller, CAR_DATA_QUEUE))
-        self.__car_data_thread.setDaemon(True)
         self.__car_data_thread.start()
 
         # video capture thread
         self.__recorder_thread = \
             threading.Thread(target=Recorder.Recorder.record, args=(self.__recorder, FRAME_QUEUE))
-        self.__recorder_thread.setDaemon(True)
         self.__recorder_thread.start()
 
         # streamer server thread
         self.__streamer_thread = \
             threading.Thread(target=self.__streamer_server.stream, \
             args=(FRAME_QUEUE,))
-        self.__streamer_thread.setDaemon(True)
         self.__streamer_thread.start()
 
         # comunicator server thread
         self.__communicator_thread = \
             threading.Thread(target=self.__communicator_server.update_user_commands, \
             args=(USER_COMMANDS_QUEUE,))
-        self.__communicator_thread.setDaemon(True)
         self.__communicator_thread.start()
 
         # data provider server thread
         self.__data_provider_thread = \
             threading.Thread(target=self.__data_provider_server.provide, \
             args=(CAR_DATA_QUEUE,))
-        self.__data_provider_thread.setDaemon(True)
         self.__data_provider_thread.start()
 
         # user commands thread
         self.__process_user_commands_thread = \
             threading.Thread(target=self.__process_user_commands, \
             args=(USER_COMMANDS_QUEUE, COMMANDS_QUEUE,))
-        self.__process_user_commands_thread.setDaemon(True)
         self.__process_user_commands_thread.start()
 
         print '[CarManager] Am startat tot'
@@ -114,11 +107,6 @@ class CarManager(threading.Thread):
                 break
             time.sleep(1)
 
-    def stop(self):
-        """
-        Stop the Car Manager
-        """
-        # send stop event
         self.__controller_thread.is_running = False
         self.__car_data_thread.is_running = False
         self.__recorder_thread.is_running = False
@@ -129,11 +117,7 @@ class CarManager(threading.Thread):
         self.__communicator_thread.is_running = False
         self.__data_provider_thread.is_connected = False
         self.__data_provider_thread.is_running = False
-        self.__is_running_lock.acquire()
-        self.__is_running = False
-        self.__is_running_lock.release()
 
-        # join
         self.__controller_thread.join()
         print '[Controller] Thread stopped.'
         self.__car_data_thread.join()
@@ -149,6 +133,15 @@ class CarManager(threading.Thread):
         self.__data_provider_thread.join()
         print '[DataProvider] Thread stopped.'
 
+    def stop(self):
+        """
+        Stop the Car Manager
+        """
+        # send stop event
+        self.__is_running_lock.acquire()
+        self.__is_running = False
+        self.__is_running_lock.release()
+
     def get_ip_address(self):
         """
         get your current ip address
@@ -161,13 +154,26 @@ class CarManager(threading.Thread):
 
     def __process_user_commands(self, user_commands_queue, commands_queue):
         current_thread = threading.currentThread()
+
+        __thread_timer = time.time()
+
         while getattr(current_thread, 'is_running', True):
-            command = user_commands_queue.get(True, None)
-            if 'CLOSE' in str(command):
-                self.__is_running_lock.acquire()
-                self.__is_running = False
-                self.__is_running_lock.release()
-            else:
-                commands_queue.put(str(command), True, None)
-            user_commands_queue.task_done()
+            if time.time() - __thread_timer > 100.0 / 1000.0:
+                __thread_timer = time.time()
+                try:
+                    command = user_commands_queue.get(False)
+                except Queue.Empty:
+                    continue
+                if 'CLOSE' in str(command):
+                    self.__is_running_lock.acquire()
+                    self.__is_running = False
+                    self.__is_running_lock.release()
+                else:
+                    while getattr(current_thread, 'is_running', True):
+                        try:
+                            commands_queue.put(str(command), False)
+                        except Queue.Full:
+                            continue
+                        break
+                user_commands_queue.task_done()
         print '[User_Commands] Thread has stopped.'
