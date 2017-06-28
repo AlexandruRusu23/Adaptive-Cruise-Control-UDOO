@@ -4,7 +4,6 @@ Comunicator Server module
 import threading
 import socket
 import sys
-import Queue
 
 class CommunicatorServer(object):
     """
@@ -33,12 +32,7 @@ class CommunicatorServer(object):
                 while getattr(current_thread, 'is_connected', True):
                     data = self.__connection.recv(1024) #valid
                     if data:
-                        while getattr(current_thread, 'is_connected', True):
-                            try:
-                                user_commands_queue.put(str(data), False)
-                            except Queue.Full:
-                                continue
-                            break
+                        user_commands_queue.put(str(data), True, None)
                     else:
                         break
             finally:

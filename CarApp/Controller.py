@@ -73,6 +73,19 @@ class Controller(object):
             self.__serial_connected = True
         self.__serial_connected_lock.release()
 
+    def __stop_serial_manager(self):
+        """
+        Stop the SerialManager
+        """
+        self.__serial_connected_lock.acquire()
+        if bool(self.__serial_connected) is True:
+            self.__serial_manager.stop()
+            self.__serial_manager.join()
+            self.__serial_connected_lock.acquire()
+            self.__serial_connected = False
+            self.__serial_connected_lock.release()
+        self.__serial_connected_lock.release()
+
     def get_car_data(self, car_data_queue):
         """
         get the dictionary with car states from SerialManager
@@ -82,28 +95,14 @@ class Controller(object):
         if bool(self.__is_connected()) is False:
             self.__start_serial_manager()
 
-        __thread_timer = time.time()
-
         while getattr(current_thread, 'is_running', True):
-            if time.time() - __thread_timer > 100.0 / 1000.0:
-                self.__serial_connected_lock.acquire()
-                condition = self.__serial_connected
-                self.__serial_connected_lock.release()
-                if bool(condition) is False:
-                    break
+            try:
+                car_data_queue.put(self.__serial_manager.get_car_data(), False)
+                time.sleep(200.0 / 1000.0)
+            except Queue.Full:
+                pass
 
-                car_data_dict = self.__serial_manager.get_car_data()
-                if len(car_data_dict) > 0:
-                    while getattr(current_thread, 'is_running', True):
-                        try:
-                            car_data_queue.put(car_data_dict, False)
-                        except Queue.Full:
-                            continue
-                        break
-                __thread_timer = time.time()
-
-        self.__serial_manager.stop()
-        self.__serial_manager.join()
+        self.__stop_serial_manager()
 
     def send_commands(self, commands_queue):
         """
@@ -114,19 +113,11 @@ class Controller(object):
         if bool(self.__is_connected()) is False:
             self.__start_serial_manager()
 
-        __thread_timer = time.time()
-
         while getattr(current_thread, 'is_running', True):
-            if time.time() - __thread_timer > 100.0 / 1000.0:
-                __thread_timer = time.time()
-                try:
-                    commands_list = [commands_queue.get(False)]
-                except Queue.Empty:
-                    continue
+            commands_list = [commands_queue.get(True, None)]
+            self.__serial_manager.set_controller_commands(commands_list)
+            self.__serial_manager.execute_commands()
+            commands_queue.task_done()
 
-                self.__serial_manager.set_controller_commands(commands_list)
-                self.__serial_manager.execute_commands()
-                commands_queue.task_done()
 
-        self.__serial_manager.stop()
-        self.__serial_manager.join()
+        self.__stop_serial_manager()

@@ -379,10 +379,7 @@ class RemoteMain(object):
             self.__analyser_thread.is_analysing = False
 
     def __update_frame(self):
-        try:
-            string_data = ANALYSED_FRAME_QUEUE.get(False)
-        except Queue.Empty:
-            return
+        string_data = ANALYSED_FRAME_QUEUE.get(True, None)
         data = numpy.fromstring(string_data, dtype='uint8')
         cv_image = cv2.imdecode(data, 1)
         if cv_image is not None:
