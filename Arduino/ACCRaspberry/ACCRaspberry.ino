@@ -9,7 +9,7 @@
 #define MIN_SPEED                 100
 #define MAX_TRESHOLD              250
 #define MIN_TRESHOLD              100
-#define SPEED_UNIT                1
+#define SPEED_UNIT                10
 
 #define TURNING_LEFT              2
 #define TURNING_RIGHT             1
@@ -40,8 +40,6 @@ unsigned long print_timer = 0;
 unsigned long serialData;
 int inByte;
 
-bool printVariable = false;
-
 void setup() {
   Serial.begin(9600);
 }
@@ -49,7 +47,7 @@ void setup() {
 void loop() {
   CommandManager();
 
-  if (millis() - print_timer > 300)
+  if (millis() - print_timer > 500)
   {
     PrintCarData();
     print_timer = millis();
@@ -102,21 +100,17 @@ long getSerial()
 
 void PrintCarData()
 {
-  if(printVariable == true)
-  {
-    Serial.flush();
-    Serial.println("CAR_DATA");
-    Serial.print("SPEED: ");
-    if (turning == DISABLED)
-      Serial.println(normalSpeed);
-    else
-      Serial.println(directionSpeed);
-    Serial.print("ACTION: ");
-    Serial.println(action);
-    Serial.println("END_CAR_DATA");
-    Serial.println("");
-  }
-  printVariable = false;
+  Serial.flush();
+  Serial.println("CAR_DATA");
+  Serial.print("SPEED: ");
+  if (turning == DISABLED)
+    Serial.println(normalSpeed);
+  else
+    Serial.println(directionSpeed);
+  Serial.print("ACTION: ");
+  Serial.println(action);
+  Serial.println("END_CAR_DATA");
+  Serial.println("");
 }
 
 void updateVectorSpeed()
@@ -144,8 +138,6 @@ void CommandManager()
             turning = DISABLED;
             action = "FRONT";
             updateVectorSpeed();
-
-            printVariable = true;
             break;
           }
           case 2:
@@ -163,8 +155,6 @@ void CommandManager()
             action = "SPEED_UP";
     
             updateVectorSpeed();
-
-            printVariable = true;
             break;
           }
         }
@@ -215,8 +205,7 @@ void CommandManager()
         {
           updateVectorSpeed();
         }
-
-        printVariable = true;
+        
         action = "SPEED_DOWN";
 
         break;
@@ -231,8 +220,6 @@ void CommandManager()
           GoBackWard[i] = false;
           motorSpeedValue[i] = normalSpeed;
         }
-
-        printVariable = true;
         directionSpeed = normalSpeed;
         break;
       }
@@ -257,8 +244,7 @@ void CommandManager()
             directionSpeed = MAX_SPEED;
           }
         }
-
-        printVariable = true;
+        
         action = "LEFT";
         
         motorSpeedValue[RIGHT_FRONT_MOTOR] = directionSpeed;
@@ -288,7 +274,6 @@ void CommandManager()
           }
         }
 
-        printVariable = true;
         action = "RIGHT";
 
         motorSpeedValue[LEFT_FRONT_MOTOR] = directionSpeed;
@@ -309,8 +294,6 @@ void CommandManager()
           motorSpeedValue[i] = normalSpeed;
           GoBackWard[i] = true;
         }
-
-        printVariable = true;
       }
   }
   Serial.flush();
