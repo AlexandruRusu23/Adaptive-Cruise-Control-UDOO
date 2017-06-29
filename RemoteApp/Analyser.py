@@ -683,7 +683,7 @@ class Analyser(object):
 
             #P3 - start avoid object
             elif self.__avoidance_state == AVD_AVOID_OBJECT:
-                if time.time() - self.__avoidance_timer > 1:
+                if time.time() - self.__avoidance_timer > 1.3:
                     if bool(self.__avoidance_go_left) is True:
                         try:
                             commands_queue.put(GLOBAL.CMD_GO_FORWARD, False)
@@ -700,7 +700,7 @@ class Analyser(object):
 
             #P3 BIS - avoiding object
             elif self.__avoidance_state == AVD_GO_FORWARD:
-                if time.time() - self.__avoidance_timer > 1:
+                if time.time() - self.__avoidance_timer > 0.8:
                     if bool(self.__avoidance_go_left) is True:
                         try:
                             commands_queue.put(GLOBAL.CMD_INCREASE_SPEED, False)
@@ -735,7 +735,7 @@ class Analyser(object):
 
             #P5 - prepare to finish
             elif self.__avoidance_state == AVD_PREPARE_TO_FINISH:
-                if time.time() - self.__avoidance_timer > 1:
+                if time.time() - self.__avoidance_timer > 0.8:
                     if bool(self.__avoidance_go_left) is True:
                         try:
                             commands_queue.put(GLOBAL.CMD_GO_LEFT, False)
@@ -769,3 +769,4 @@ class Analyser(object):
     def __draw_detected_objects(self):
         for element in self.__objects_coords_list:
             cv2.circle(self.__current_frame, (element[0], element[1]), element[2], (0, 255, 0), 4)
+        self.__objects_coords_list = []
