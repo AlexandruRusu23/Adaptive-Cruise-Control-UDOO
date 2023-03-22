@@ -7,12 +7,12 @@
 
 ### Demos: ###
 
-[Link Video 1](https://drive.google.com/file/d/0B-tqpJo8Mh_fb2JyaVQxYjJ1TUE/view?usp=drivesdk&resourcekey=0-b4Q-Zn-J4e8p9RCUujc7eQ)
+[Link Video 1](https://drive.google.com/file/d/0B-tqpJo8Mh_fb2JyaVQxYjJ1TUE/view?usp=sharing&resourcekey=0-b4Q-Zn-J4e8p9RCUujc7eQ)
 
-[Link Video 2](https://drive.google.com/file/d/0B-tqpJo8Mh_feW00MWtnd3M2V3c/view?usp=sharing)
+[Link Video 2](https://drive.google.com/file/d/0B-tqpJo8Mh_feW00MWtnd3M2V3c/view?usp=sharing&resourcekey=0-AGlYc1zcl__03yB2Ttq_4Q)
 
-[Link Video 3](https://drive.google.com/file/d/0B-tqpJo8Mh_fNVl3Z2RmYTNsRUE/view?usp=sharing)
+[Link Video 3](https://drive.google.com/file/d/0B-tqpJo8Mh_fNVl3Z2RmYTNsRUE/view?usp=sharing&resourcekey=0-FTDC5d77JMZM5MxVEWJZfQ)
 
-[Link Video 4](https://drive.google.com/file/d/0B-tqpJo8Mh_fZDBVOGQxeTFOdzg/view?usp=sharing)
+[Link Video 4](https://drive.google.com/file/d/0B-tqpJo8Mh_fZDBVOGQxeTFOdzg/view?usp=sharing&resourcekey=0-UoES-QS8t_pAyVThIx9waw)
 
-[Link Video 5](https://drive.google.com/file/d/0B-tqpJo8Mh_fbW42NWJGaTNOWVU/view?usp=sharing)
+[Link Video 5](https://drive.google.com/file/d/0B-tqpJo8Mh_fbW42NWJGaTNOWVU/view?usp=sharing&resourcekey=0-tAuINMVcjp9-nQyCVfvzMg)
